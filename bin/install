@@ -30,7 +30,7 @@ latest_release="${latest_release:1}"
 
 # Download binary
 tmp_dir=$(mktemp -d)
-curl -s -L https://github.com/enkodr/machina/releases/download/v${latest_release}/machina_${latest_release}_${os}_${arch} -o "${tmp_dir}/machina"
+curl -sL https://github.com/enkodr/machina/releases/download/v${latest_release}/machina_${latest_release}_${os}_${arch} -o "${tmp_dir}/machina"
 chmod +x "${tmp_dir}/machina"
 
 # Install binary

@@ -5,7 +5,7 @@
 ## Installation
 
 ```bash
-curl https://raw.githubusercontent.com/enkodr/machina/main/bin/install | sh -
+curl -sL https://raw.githubusercontent.com/enkodr/machina/main/bin/install | sh -
 ```
 
 ## Configuration
