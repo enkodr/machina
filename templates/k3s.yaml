@@ -1,0 +1,14 @@
+extends: ubuntu
+
+scripts:
+  install: |
+    #!/bin/bash
+    sudo apt update
+    sudo apt upgrade -y
+    curl -sfL https://get.k3s.io | K3S_KUBECONFIG_MODE=644 sh -
+    sudo snap install kubectl --classic
+
+  init: |
+    #!/bin/bash
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+

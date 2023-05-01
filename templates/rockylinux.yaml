@@ -1,0 +1,18 @@
+name: rockylinux
+
+extends: default
+
+variant: "rocky9"
+
+image : 
+  url: "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-EC2-Base-9.1-20230215.0.x86_64.qcow2"                                                                                                                        
+  checksum: "sha256:b5f24ca0c1f5d6316838caa83df86d2ad4c25f57815b0a888bd177e22835eb9c"   
+
+scripts:
+  install: |
+    #!/bin/bash
+    sudo dnf install -y
+    
+  init: |
+    #!/bin/bash
+    echo "Welcome to AlmaLinux"    

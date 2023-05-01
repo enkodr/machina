@@ -1,0 +1,18 @@
+name: almalinux
+
+extends: default
+
+variant: "almalinux9"
+
+image : 
+  url: "https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-9.1-20221118.x86_64.qcow2"                                                                                                                        
+  checksum: "sha256:1e93210a0c534de76ae01dc02e8224be14264fa8d54ad6cff9af15b673c6db1a"   
+
+scripts:
+  install: |
+    #!/bin/bash
+    sudo dnf install -y
+    
+  init: |
+    #!/bin/bash
+    echo "Welcome to AlmaLinux"    
