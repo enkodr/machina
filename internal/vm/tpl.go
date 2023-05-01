@@ -77,7 +77,7 @@ func parseTemplate(tpl []byte) (*VMConfig, error) {
 		return nil, err
 	}
 
-	if vm.Extends != "" {
+	for vm.Extends != "" {
 		tplFile := fmt.Sprintf("%s/%s.yaml", endpoint, vm.Extends)
 		baseTpl, err := netutil.Download(tplFile)
 		if err != nil {
@@ -88,6 +88,9 @@ func parseTemplate(tpl []byte) (*VMConfig, error) {
 		err = yaml.Unmarshal(baseTpl, base)
 		if err != nil {
 			return nil, err
+		}
+		if base.Extends == "" {
+			vm.Extends = ""
 		}
 		mergo.Merge(vm, base)
 	}
