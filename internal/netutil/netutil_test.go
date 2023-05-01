@@ -52,7 +52,7 @@ func TestGetGatewayFromIP(t *testing.T) {
 
 	// Test Case 2: Test with invalid IP address
 	_, err := GetGatewayFromIP("192.168.122")
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestValidateIPAddress(t *testing.T) {
@@ -78,7 +78,7 @@ func TestGenerateIpAddress(t *testing.T) {
 func TestRandomMacAddress(t *testing.T) {
 	// Test Case 1: Unable to generate MacAddress
 	_, err := RandomMacAddress()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestDownload(t *testing.T) {
@@ -91,12 +91,26 @@ func TestDownload(t *testing.T) {
 	// Test case 1: Valid download
 	url := fmt.Sprintf("%s/file.txt", testServer.URL)
 	dwnlData, err := Download(url)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Test case 2: Validate downloaded data
 	fileData, err := os.ReadFile("testdata/file.txt")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, fileData, dwnlData)
+}
+
+func TestDownloadNotFound(t *testing.T) {
+	// Create a test server
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	defer testServer.Close()
+
+	// Test case 1: Valid download
+	url := fmt.Sprintf("%s/file.txt", testServer.URL)
+	_, err := Download(url)
+	assert.Error(t, err)
+
 }
 
 func TestDownloadAndSave(t *testing.T) {
@@ -109,7 +123,7 @@ func TestDownloadAndSave(t *testing.T) {
 
 	destination := "/tmp"
 	err := DownloadAndSave(url, destination)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Verify that the file was downloadADownloadAndSaveed to the correct location
 	filePath := filepath.Join(destination, "file.txt")
@@ -121,15 +135,33 @@ func TestDownloadAndSave(t *testing.T) {
 
 	// Test case 2: Invalid URL
 	err = DownloadAndSave("invalidurl", destination)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 
 	// Test case 3: Valid URL but with no file specified
 	err = DownloadAndSave(testServer.URL, destination)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 
 	// Test case 4: Invalid destination
 	destination = "invalidpath"
 	err = DownloadAndSave(url, destination)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 
+}
+
+func TestGetIPFromNetworkAddress(t *testing.T) {
+	ips := []struct {
+		input string
+		want  string
+	}{
+		{"192.168.0.1/24", "192.168.0.1"},
+		{"10.0.0.1/16", "10.0.0.1"},
+		{"172.16.0.1/12", "172.16.0.1"},
+		{"", ""},
+		{"192.168.0.1", "192.168.0.1"}, // Test without network prefix
+	}
+
+	for _, ip := range ips {
+		got := GetIPFromNetworkAddress(ip.input)
+		assert.Equal(t, got, ip.want)
+	}
 }

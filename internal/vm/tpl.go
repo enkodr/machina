@@ -51,6 +51,9 @@ func (f *RemoteFile) Load() (*VMConfig, error) {
 	// Get the template content
 	tplFile := fmt.Sprintf("%s/%s.yaml", endpoint, f.name)
 	tpl, err := netutil.Download(tplFile)
+	if err != nil {
+		return nil, err
+	}
 
 	// Parse the YAML to struct
 	vm, err := parseTemplate(tpl)
@@ -63,7 +66,12 @@ func (f *RemoteFile) Load() (*VMConfig, error) {
 
 // parse the template from yaml to struct
 func parseTemplate(tpl []byte) (*VMConfig, error) {
-	vm, err := parseYaml(tpl)
+	vm := &VMConfig{}
+
+	err := yaml.Unmarshal(tpl, vm)
+	if err != nil {
+		return nil, err
+	}
 
 	if err != nil {
 		return nil, err
@@ -76,24 +84,12 @@ func parseTemplate(tpl []byte) (*VMConfig, error) {
 			return nil, err
 		}
 
-		base, err := parseYaml(baseTpl)
+		base := &VMConfig{}
+		err = yaml.Unmarshal(baseTpl, base)
 		if err != nil {
 			return nil, err
 		}
-
 		mergo.Merge(vm, base)
-	}
-
-	return vm, nil
-}
-
-// parse the template from yaml to struct
-func parseYaml(tpl []byte) (*VMConfig, error) {
-	vm := &VMConfig{}
-
-	err := yaml.Unmarshal(tpl, vm)
-	if err != nil {
-		return nil, err
 	}
 
 	return vm, nil

@@ -16,10 +16,10 @@ func TestEnsureDirectories(t *testing.T) {
 
 	// Check if directories were created
 	_, err := os.Stat(filepath.Join(cfg.Directories.Images))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	_, err = os.Stat(filepath.Join(cfg.Directories.Instances, name))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Cleanup test directory
 	os.Remove(filepath.Join(cfg.Directories.Instances, name))
@@ -33,5 +33,5 @@ func TestGetFilenameFromURL(t *testing.T) {
 
 	// Test case 2: Invalid URL
 	_, err := GetFilenameFromURL("https://www.linux.com")
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }

@@ -119,7 +119,7 @@ func NewVM(name string) (*VMConfig, error) {
 	}
 	vm.Network = Network{
 		NicName:    net.Ethernets.VirtNet.Name,
-		IPAddress:  netutil.GetIPAddress(net.Ethernets.VirtNet.Addresses[0]),
+		IPAddress:  netutil.GetIPFromNetworkAddress(net.Ethernets.VirtNet.Addresses[0]),
 		Gateway:    net.Ethernets.VirtNet.Gateway4,
 		MacAddress: net.Ethernets.VirtNet.Match.MacAddress,
 	}

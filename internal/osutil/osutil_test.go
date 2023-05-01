@@ -19,11 +19,11 @@ func TestMkDir(t *testing.T) {
 
 	// Check if test directory exists
 	_, err := os.Stat(testDir)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Clean up test directory
 	err = os.RemoveAll(testDir)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestChecksum(t *testing.T) {

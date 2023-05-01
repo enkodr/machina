@@ -1,69 +1,128 @@
 package vm
 
 import (
-	"net/http"
-	"net/http/httptest"
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
-func TestLocalFile_Load(t *testing.T) {
-	// Create a temporary file
-	file, err := os.CreateTemp("", "*.yaml")
-	assert.Nil(t, err)
-	defer os.Remove(file.Name())
+func TestNewTemplate(t *testing.T) {
+	testCases := []struct {
+		name     string
+		wantType Filer
+	}{
+		{"local.yaml", &LocalFile{}},
+		{"default", &RemoteFile{}},
+		{"ubuntu.yaml", &LocalFile{}},
+		{"ubuntu", &RemoteFile{}},
+	}
 
-	// Write some YAML to the file
-	yaml := []byte("name: My Template\n")
-	_, err = file.Write(yaml)
-	assert.Nil(t, err)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := NewTemplate(tc.name)
 
-	// Load the file using LocalFile.Load
-	lf := &LocalFile{path: file.Name()}
-	vm, err := lf.Load()
-	assert.Nil(t, err)
-
-	// Check that the loaded MachinaVM matches the original YAML
-	assert.Equal(t, "My Template", vm.Name)
+			switch r := result.(type) {
+			case any:
+				assert.IsType(t, tc.wantType, r)
+			}
+		})
+	}
 }
 
-func TestRemoteFile_Load(t *testing.T) {
-	// Start an HTTP server that serves some YAML
-	yaml := []byte("name: My Template\n")
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(yaml)
-	}))
-	defer testServer.Close()
+func TestLocalFileLoadValidData(t *testing.T) {
+	want := []byte(`name: TestVM
+specs:
+  cpus: 2
+  memory: "2G"
+  disk: "50G"
+`)
 
-	// Load the remote file using RemoteFile.Load
-	rf := &RemoteFile{name: "template"}
-	endpoint = testServer.URL
-
-	vm, err := rf.Load()
-	assert.Nil(t, err)
-
-	// Check that the loaded MachinaVM matches the original YAML
-	assert.Equal(t, "My Template", vm.Name)
+	name := "template.yaml"
+	f, _ := os.CreateTemp("", name)
+	defer f.Close()
+	defer os.Remove(f.Name())
+	f.Write(want)
+	localFile := &LocalFile{path: f.Name()}
+	got, _ := localFile.Load()
+	assert.Equal(t, got.Name, "TestVM")
+	assert.Equal(t, got.Specs.CPUs, "2")
+	assert.Equal(t, got.Specs.Memory, "2G")
+	assert.Equal(t, got.Specs.Disk, "50G")
 }
 
-func TestParseYaml(t *testing.T) {
-	// Parse some YAML into a MachinaVM struct
-	yaml := []byte("name: My Template\n")
-	vm, err := parseYaml(yaml)
-	assert.Nil(t, err)
-
-	// Check that the parsed MachinaVM matches the original YAML
-	assert.Equal(t, "My Template", vm.Name)
+func TestLocalFileLoadInvalidData(t *testing.T) {
+	want := "invalid data"
+	name := "template.yaml"
+	f, _ := os.CreateTemp("", name)
+	f.Write([]byte(want))
+	localFile := &LocalFile{path: f.Name()}
+	vm, err := localFile.Load()
+	assert.Error(t, err)
+	assert.Nil(t, vm)
+	defer f.Close()
+	defer os.Remove(f.Name())
 }
 
-func TestParseTemplate(t *testing.T) {
-	// Parse some YAML into a MachinaVM struct
-	yaml := []byte("name: My Template\n")
-	vm, err := parseTemplate(yaml)
-	assert.Nil(t, err)
+func TestRemoteFileValidName(t *testing.T) {
+	name := "ubuntu-lts"
+	data, _ := os.ReadFile(fmt.Sprintf("../../templates/%s.yaml", name))
+	want := &VMConfig{}
+	err := yaml.Unmarshal(data, want)
+	assert.NoError(t, err)
 
-	// Check that the parsed MachinaVM matches the original YAML
-	assert.Equal(t, "My Template", vm.Name)
+	remoteFile := &RemoteFile{name: name}
+	got, _ := remoteFile.Load()
+
+	assert.Equal(t, want.Name, got.Name)
+	assert.Equal(t, want.Specs.CPUs, got.Specs.CPUs)
+	assert.Equal(t, want.Image.Checksum, got.Image.Checksum)
+
+}
+
+func TestRemoteFileInvalidName(t *testing.T) {
+	name := "invalid"
+
+	remoteFile := &RemoteFile{name: name}
+	vm, err := remoteFile.Load()
+
+	assert.Error(t, err)
+	assert.Nil(t, vm)
+}
+
+func TestParseTemplateValidInput(t *testing.T) {
+	want := []byte(`name: TestVM
+specs:
+  cpus: 2
+  memory: "2G"
+  disk: "50G"
+`)
+
+	got, err := parseTemplate(want)
+	assert.NoError(t, err)
+	assert.Equal(t, "TestVM", got.Name)
+	assert.Equal(t, "2", got.Specs.CPUs)
+	assert.Equal(t, "2G", got.Specs.Memory)
+}
+
+func TestParseTemplate_InvalidYAML(t *testing.T) {
+	want := []byte(`invalid data`)
+
+	got, err := parseTemplate(want)
+	assert.Error(t, err)
+	assert.Nil(t, got)
+}
+
+func TestParseTemplateExtends(t *testing.T) {
+	want := []byte(`name: TestVM
+extends: ubuntu-lts
+`)
+
+	got, err := parseTemplate(want)
+	assert.NoError(t, err)
+	assert.Equal(t, "TestVM", got.Name)
+	assert.Equal(t, "2", got.Specs.CPUs)
+	assert.Equal(t, "2G", got.Specs.Memory)
 }

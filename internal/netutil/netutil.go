@@ -148,7 +148,7 @@ func DownloadAndSave(url, destination string) error {
 
 }
 
-func GetIPAddress(net string) string {
+func GetIPFromNetworkAddress(net string) string {
 	ip := strings.Split(net, "/")
 	return ip[0]
 }
