@@ -3,14 +3,12 @@ package machina
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"text/tabwriter"
 
 	"github.com/enkodr/machina/internal/config"
 	"github.com/enkodr/machina/internal/vm"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 var listCommand = &cobra.Command{
@@ -29,18 +27,19 @@ var listCommand = &cobra.Command{
 		w := tabwriter.NewWriter(os.Stdout, 10, 0, 2, ' ', tabwriter.Debug)
 		fmt.Fprintln(w, "Name\t IP\t Status\t CPUs\t Memory\t Disk\t Variant")
 		for _, dir := range dirs {
-			data, _ := os.ReadFile(filepath.Join(cfg.Directories.Instances, dir.Name(), "machina.yaml"))
-			vm := &vm.VMConfig{}
-			yaml.Unmarshal(data, vm)
-
+			vmc, _ := vm.Load(dir.Name())
+			status, err := vmc.Status()
+			if err != nil {
+				status = "error"
+			}
 			fmt.Fprintln(w,
-				vm.Name,
-				"\t", vm.Network.IPAddress,
-				"\t", vm.Status(),
-				"\t", vm.Specs.CPUs,
-				"\t", vm.Specs.Memory,
-				"\t", vm.Specs.Disk,
-				"\t", vm.Variant,
+				vmc.Name,
+				"\t", vmc.Network.IPAddress,
+				"\t", status,
+				"\t", vmc.Specs.CPUs,
+				"\t", vmc.Specs.Memory,
+				"\t", vmc.Specs.Disk,
+				"\t", vmc.Variant,
 			)
 		}
 		w.Flush()

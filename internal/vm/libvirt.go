@@ -31,12 +31,17 @@ func (h *Libvirt) Create(vm *VMConfig) error {
 		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, vm.Name, "disk.img")),
 		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, vm.Name, "seed.img")),
 		"--import",
-		parseLibvirtMounts(vm.Mounts),
 		"--network", fmt.Sprintf("bridge=virbr0,model=virtio,mac=%s", vm.Network.MacAddress),
 		"--noautoconsole",
+		parseLibvirtMounts(vm.Mounts),
 	}
+	args = removeEmptyStrings(args)
 
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	defer logFile.Close()
 	cmd := exec.Command(command, args...)
+	cmd.Stdout = logFile
+
 	err = cmd.Start()
 	if err != nil {
 		vm.LogError(err)
@@ -45,8 +50,20 @@ func (h *Libvirt) Create(vm *VMConfig) error {
 	return err
 }
 
+func removeEmptyStrings(strings []string) []string {
+	nonEmptyStrings := make([]string, 0, len(strings))
+
+	for _, str := range strings {
+		if str != "" {
+			nonEmptyStrings = append(nonEmptyStrings, str)
+		}
+	}
+
+	return nonEmptyStrings
+}
+
 func parseLibvirtMounts(slice []Mount) string {
-	mounts := make([]string, len(slice))
+	mounts := []string{}
 	for _, m := range slice {
 		home, _ := os.UserHomeDir()
 		path := strings.Replace(m.HostPath, "~", home, -1)
@@ -57,7 +74,9 @@ func parseLibvirtMounts(slice []Mount) string {
 			fmt.Sprintf("%s,%s", path, m.Path),
 		)
 	}
-
+	if len(mounts) == 0 {
+		return ""
+	}
 	return strings.Join(mounts, " ")
 }
 func convertMemory(memory string) (string, error) {
@@ -81,8 +100,11 @@ func (h *Libvirt) Start(vm *VMConfig) error {
 		"start",
 		vm.Name,
 	}
-
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	defer logFile.Close()
 	cmd := exec.Command(command, args...)
+	cmd.Stdout = logFile
+
 	err := cmd.Start()
 	if err != nil {
 		return err
@@ -99,7 +121,11 @@ func (h *Libvirt) Stop(vm *VMConfig) error {
 		vm.Name,
 	}
 
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	defer logFile.Close()
 	cmd := exec.Command(command, args...)
+	cmd.Stdout = logFile
+
 	err := cmd.Start()
 	if err != nil {
 		return err
@@ -107,7 +133,7 @@ func (h *Libvirt) Stop(vm *VMConfig) error {
 	return err
 }
 
-func (h *Libvirt) Status(vm *VMConfig) error {
+func (h *Libvirt) Status(vm *VMConfig) (string, error) {
 	cfg := config.LoadConfig()
 	command := "virsh"
 	args := []string{
@@ -117,11 +143,13 @@ func (h *Libvirt) Status(vm *VMConfig) error {
 	}
 
 	cmd := exec.Command(command, args...)
-	err := cmd.Start()
+
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return err
+		return "", err
 	}
-	return err
+	strOutput := strings.TrimSpace(string(output))
+	return strOutput, nil
 }
 
 func (h *Libvirt) Delete(vm *VMConfig) error {
@@ -132,7 +160,12 @@ func (h *Libvirt) Delete(vm *VMConfig) error {
 		"destroy",
 		vm.Name,
 	}
+
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	defer logFile.Close()
 	cmd := exec.Command(command, args...)
+	cmd.Stdout = logFile
+
 	err := cmd.Start()
 	if err != nil {
 		return err
@@ -175,6 +208,11 @@ func (h *Libvirt) Delete(vm *VMConfig) error {
 	args = []string{
 		"-R",
 		vm.Network.IPAddress,
+	}
+	cmd = exec.Command(command, args...)
+	err = cmd.Start()
+	if err != nil {
+		return err
 	}
 
 	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, vm.Name))

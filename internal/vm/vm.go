@@ -78,7 +78,7 @@ type Hypervisor interface {
 	Create(vm *VMConfig) error
 	Start(vm *VMConfig) error
 	Stop(vm *VMConfig) error
-	Status(vm *VMConfig) error
+	Status(vm *VMConfig) (string, error)
 	Delete(vm *VMConfig) error
 }
 
@@ -186,7 +186,6 @@ func Load(name string) (*VMConfig, error) {
 		vm.Hypervisor = &Libvirt{}
 		vm.Connection = "qemu://system"
 	}
-
 	return vm, nil
 }
 
@@ -203,7 +202,6 @@ func (vm *VMConfig) DownloadImage() error {
 
 	// check if hashes equal
 	if osutil.Checksum(localImage, vm.Image.Checksum) {
-		vm.LogError(err)
 		return nil
 	}
 
@@ -277,7 +275,7 @@ func (vm *VMConfig) Stop() error {
 }
 
 // Gets the status of a VM
-func (vm *VMConfig) Status() error {
+func (vm *VMConfig) Status() (string, error) {
 	return vm.Hypervisor.Status(vm)
 }
 
@@ -407,8 +405,8 @@ func (vm *VMConfig) LogError(err error) {
 		TimestampFormat: "2006-01-02 15:04:05",
 	})
 
-	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "errors.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	defer logFile.Close()
-	logrus.SetOutput(logFile)
+	errorFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "errors.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	defer errorFile.Close()
+	logrus.SetOutput(errorFile)
 	logrus.Error(err)
 }

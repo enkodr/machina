@@ -47,8 +47,8 @@ func (h *Qemu) Stop(vm *VMConfig) error {
 	return nil
 }
 
-func (h *Qemu) Status(vm *VMConfig) error {
-	return nil
+func (h *Qemu) Status(vm *VMConfig) (string, error) {
+	return "", nil
 }
 
 func (h *Qemu) Delete(vm *VMConfig) error {
