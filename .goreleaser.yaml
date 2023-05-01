@@ -1,0 +1,27 @@
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - main: ./cmd/main.go
+    binary: machina
+    id: machina
+    env:
+      - CGO_ENABLED=0
+      - GITHUB_TOKEN="test"
+    goarch:
+    - amd64
+    ldflags:
+    - -s
+    - -w
+    - -X github.com/enkodr/machina/cmd/machina.version={{.Version}}
+    - -X github.com/enkodr/machina/cmd/machina.gitCommit={{.Commit}}
+    - -X github.com/enkodr/machina/cmd/machina.buildDate={{.Date}}
+    goos:
+      - linux
+archives:
+  - id: machina
+    builds: 
+    - machina
+    format: binary
+checksum:
+  algorithm: sha256

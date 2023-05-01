@@ -1,0 +1,7 @@
+# Extends a specific template
+# You must set the name of the template file to extend
+extends: ubuntu-lts
+
+# If you want to override any value from the original extended template, 
+# just add it in this file
+name: default

@@ -1,0 +1,41 @@
+#!/bin/sh
+
+set -eu
+
+# Check if curl is installed
+if ! [ -x "$(command -v curl)" ]; then
+  echo 'Error: curl is not installed' >&2
+  exit 1
+fi
+
+# Check if jq is installed
+if ! [ -x "$(command -v curl)" ]; then
+  echo 'Error: jq is not installed' >&2
+  exit 1
+fi
+
+# Set variables
+install_dir="${HOME}/.local/bin"
+os="linux"
+arch="amd64"
+
+# Check if the install directory exists
+if ! [ -d "${install_dir}" ]; then
+  mkdir -p "${install_dir}"
+fi
+
+# Check latest version
+latest_release=$(curl -sL https://api.github.com/repos/enkodr/machina/releases/latest | jq -r ".tag_name")
+latest_release="${latest_release:1}"
+
+# Download binary
+tmp_dir=$(mktemp -d)
+curl -s -L https://github.com/enkodr/machina/releases/download/v${latest_release}/machina_${latest_release}_${os}_${arch} -o "${tmp_dir}/machina"
+chmod +x "${tmp_dir}/machina"
+
+# Install binary
+mv "${tmp_dir}/machina" "${install_dir}/machina"
+
+
+# Clean up
+rm -rf "$tmp_dir"

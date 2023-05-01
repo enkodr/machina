@@ -1,0 +1,50 @@
+name: release
+
+on:
+  push:
+    tags:
+    - "v*"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3.4.0
+
+    - name: Setup Go
+      uses: actions/setup-go@v4.0.0
+      with:
+        go-version-file: "go.mod"
+
+    - name: Install dependencies
+      run: go mod tidy
+      
+    - name: Run tests
+      run: go test -v ./...
+
+  release:
+    needs: [test]
+    name: Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3.4.0
+
+    - name: Setup Go
+      uses: actions/setup-go@v4.0.0
+      with:
+        go-version-file: "go.mod"
+
+    - name: Run GoRelease
+      uses: goreleaser/goreleaser-action@v4.2.0
+      with:
+        args: release --clean
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
