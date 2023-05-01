@@ -45,7 +45,7 @@ scripts:
 # `hostPath` is the path in the host and the `path` sets the path inside the VM 
 # where the mount will be defined. 
 # This will use `virtio-9p` driver.
-mounts:
-# - name: share
+mount:
+  # name: share
   # hostPath: "/path/to/host/folder"
-  # path: "/path/to/guest/folder"
+  # guestPath: "/path/to/guest/folder"

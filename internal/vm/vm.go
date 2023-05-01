@@ -14,7 +14,6 @@ import (
 	"github.com/enkodr/machina/internal/osutil"
 	"github.com/enkodr/machina/internal/sshutil"
 	"github.com/enkodr/machina/internal/usrutil"
-	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
@@ -27,7 +26,7 @@ type VMConfig struct {
 	Credentials Credentials `yaml:"credentials,omitempty"`
 	Specs       Specs       `yaml:"specs,omitempty"`
 	Scripts     Scripts     `yaml:"scripts,omitempty"`
-	Mounts      []Mount     `yaml:"mounts,omitempty"`
+	Mount       Mount       `yaml:"mount,omitempty"`
 	Network     Network     `yaml:"network,omitempty"`
 	Connection  string      `yaml:"connection,omitempty"`
 	Variant     string      `yaml:"variant,omitempty"`
@@ -61,9 +60,9 @@ type Scripts struct {
 
 // Mount represents the mount points from the to the machine
 type Mount struct {
-	Name     string `yaml:"name,omitempty"`
-	HostPath string `yaml:"hostPath,omitempty"`
-	Path     string `yaml:"path,omitempty"`
+	Name      string `yaml:"name,omitempty"`
+	HostPath  string `yaml:"hostPath,omitempty"`
+	GuestPath string `yaml:"guestPath,omitempty"`
 }
 
 // Network represents the network configuration
@@ -86,7 +85,6 @@ func NewVM(name string) (*VMConfig, error) {
 	tpl := NewTemplate(name)
 	vm, err := tpl.Load()
 	if err != nil {
-		vm.LogError(err)
 		return nil, err
 	}
 
@@ -103,22 +101,19 @@ func NewVM(name string) (*VMConfig, error) {
 		vm.Hypervisor = &Qemu{}
 	} else {
 		vm.Hypervisor = &Libvirt{}
-		vm.Connection = "qemu://system"
 	}
 
 	// Create directory structure
-	imgutil.EnsureDirectories(name)
+	imgutil.EnsureDirectories(vm.Name)
 
 	// Create network configuration
 	net := netutil.NewNetwork()
 	netYaml, err := yaml.Marshal(net)
 	if err != nil {
-		vm.LogError(err)
 		return nil, err
 	}
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, name, "network.cfg"), netYaml, 0644)
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "network.cfg"), netYaml, 0644)
 	if err != nil {
-		vm.LogError(err)
 		return nil, err
 	}
 	vm.Network = Network{
@@ -137,25 +132,21 @@ func NewVM(name string) (*VMConfig, error) {
 	}
 	usr, err := usrutil.NewUserData(&clCfg)
 	if err != nil {
-		vm.LogError(err)
 		return nil, err
 	}
 	usrYaml, err := yaml.Marshal(usr)
 	if err != nil {
-		vm.LogError(err)
 		return nil, err
 	}
 	usrYaml = append([]byte("#cloud-config\n"), usrYaml...)
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, name, "userdata.yaml"), usrYaml, 0644)
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "userdata.yaml"), usrYaml, 0644)
 	if err != nil {
-		vm.LogError(err)
 		return nil, err
 	}
 
 	// Save private key
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, name, "id_rsa"), clCfg.PrivateKey, 0600)
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"), clCfg.PrivateKey, 0600)
 	if err != nil {
-		vm.LogError(err)
 		return nil, err
 	}
 
@@ -177,14 +168,12 @@ func Load(name string) (*VMConfig, error) {
 	data, err := os.ReadFile(filepath.Join(cfg.Directories.Instances, name, "machina.yaml"))
 	err = yaml.Unmarshal(data, vm)
 	if err != nil {
-		vm.LogError(err)
 		return nil, err
 	}
 	if cfg.Hypervisor == "qemu" {
 		vm.Hypervisor = &Qemu{}
 	} else {
 		vm.Hypervisor = &Libvirt{}
-		vm.Connection = "qemu://system"
 	}
 	return vm, nil
 }
@@ -194,7 +183,6 @@ func (vm *VMConfig) DownloadImage() error {
 	imgDir := cfg.Directories.Images
 	fileName, err := imgutil.GetFilenameFromURL(vm.Image.URL)
 	if err != nil {
-		vm.LogError(err)
 		return err
 	}
 
@@ -208,7 +196,6 @@ func (vm *VMConfig) DownloadImage() error {
 	// download the image
 	err = netutil.DownloadAndSave(vm.Image.URL, imgDir)
 	if err != nil {
-		vm.LogError(err)
 		return err
 	}
 	return nil
@@ -229,7 +216,6 @@ func (vm *VMConfig) CreateDisks() error {
 	cmd := exec.Command(command, args...)
 	err := cmd.Run()
 	if err != nil {
-		vm.LogError(err)
 		return err
 	}
 
@@ -243,7 +229,6 @@ func (vm *VMConfig) CreateDisks() error {
 	cmd = exec.Command(command, args...)
 	err = cmd.Run()
 	if err != nil {
-		vm.LogError(err)
 		return err
 	}
 
@@ -300,7 +285,6 @@ func (vm *VMConfig) CopyContent(origin string, dest string) error {
 	cmd := exec.Command(command, args...)
 	err := cmd.Run()
 	if err != nil {
-		vm.LogError(err)
 		return err
 	}
 
@@ -311,14 +295,33 @@ func (vm *VMConfig) CopyContent(origin string, dest string) error {
 func (vm *VMConfig) createScriptFiles() error {
 	cfg := config.LoadConfig()
 	vm.Scripts.Install += "echo 'source $HOME/.machinarc' >> $HOME/.bashrc\n"
-	err := os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, ".init.sh"), []byte(vm.Scripts.Install), 0744)
+	vm.Scripts.Install += "sudo mv $HOME/.init /etc/init.d/machina && sudo update-rc.d machina defaults && sh /etc/init.d/machina\n"
+	err := os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, ".install"), []byte(vm.Scripts.Install), 0744)
 	if err != nil {
-		vm.LogError(err)
 		return nil
 	}
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, ".machinarc"), []byte(vm.Scripts.Init), 0744)
+
+	// "sudo mount -t 9p /home/machina/host host/",
+	initScript := fmt.Sprintf(`#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          machina 
+# Required-Start:    $local_fs $remote_fs
+# Required-Stop:     $local_fs $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Machina init script
+# Description:       Start/stop machina service
+### END INIT INFO
+mkdir -p %s
+sudo mount -t 9p %s %s`, vm.Mount.GuestPath, vm.Mount.GuestPath, vm.Mount.GuestPath)
+
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, ".init"), []byte(initScript), 0744)
 	if err != nil {
-		vm.LogError(err)
+		return nil
+	}
+
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, ".machinarc"), []byte(vm.Scripts.Init), 0644)
+	if err != nil {
 		return nil
 	}
 	return nil
@@ -328,18 +331,31 @@ func (vm *VMConfig) createScriptFiles() error {
 func (vm *VMConfig) RunInitScripts() error {
 	cfg := config.LoadConfig()
 
-	// Copies the init script into the VM
+	// Copies the install script into the VM
 	command := "scp"
 	args := []string{
 		"-o", "StrictHostKeyChecking=no",
 		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
-		filepath.Join(cfg.Directories.Instances, vm.Name, ".init.sh"),
-		fmt.Sprintf("%s@%s:/home/%s/%s", vm.Credentials.Username, vm.Network.IPAddress, vm.Credentials.Username, ".init.sh"),
+		filepath.Join(cfg.Directories.Instances, vm.Name, ".install"),
+		fmt.Sprintf("%s@%s:/tmp/install", vm.Credentials.Username, vm.Network.IPAddress),
 	}
 	cmd := exec.Command(command, args...)
 	err := cmd.Run()
 	if err != nil {
-		vm.LogError(err)
+		return err
+	}
+
+	// Copies the init script into the VM
+	command = "scp"
+	args = []string{
+		"-o", "StrictHostKeyChecking=no",
+		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
+		filepath.Join(cfg.Directories.Instances, vm.Name, ".init"),
+		fmt.Sprintf("%s@%s:/home/%s/.init", vm.Credentials.Username, vm.Network.IPAddress, vm.Credentials.Username),
+	}
+	cmd = exec.Command(command, args...)
+	err = cmd.Run()
+	if err != nil {
 		return err
 	}
 
@@ -348,12 +364,11 @@ func (vm *VMConfig) RunInitScripts() error {
 		"-o", "StrictHostKeyChecking=no",
 		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
 		filepath.Join(cfg.Directories.Instances, vm.Name, ".machinarc"),
-		fmt.Sprintf("%s@%s:/home/%s/%s", vm.Credentials.Username, vm.Network.IPAddress, vm.Credentials.Username, ".machinarc"),
+		fmt.Sprintf("%s@%s:/home/%s/.machinarc", vm.Credentials.Username, vm.Network.IPAddress, vm.Credentials.Username),
 	}
 	cmd = exec.Command(command, args...)
 	err = cmd.Run()
 	if err != nil {
-		vm.LogError(err)
 		return err
 	}
 
@@ -363,12 +378,11 @@ func (vm *VMConfig) RunInitScripts() error {
 		"-o StrictHostKeyChecking=no",
 		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
 		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
-		fmt.Sprintf("/home/%s/.init.sh", vm.Credentials.Username),
+		"/tmp/install",
 	}
 	cmd = exec.Command(command, args...)
 	err = cmd.Run()
 	if err != nil {
-		vm.LogError(err)
 		return err
 	}
 
@@ -391,22 +405,8 @@ func (vm *VMConfig) Shell() error {
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	if err != nil {
-		vm.LogError(err)
 		return err
 	}
 
 	return nil
-}
-
-func (vm *VMConfig) LogError(err error) {
-	cfg := config.LoadConfig()
-	logrus.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: "2006-01-02 15:04:05",
-	})
-
-	errorFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "errors.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	defer errorFile.Close()
-	logrus.SetOutput(errorFile)
-	logrus.Error(err)
 }

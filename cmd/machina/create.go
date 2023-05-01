@@ -49,7 +49,7 @@ var createCommand = &cobra.Command{
 		}
 
 		// wait until is running
-		log.Info("Waiting for the machine to be ready")
+		log.Info("Waiting for the machine to become ready")
 		vm.Wait()
 
 		// run scritps

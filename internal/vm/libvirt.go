@@ -33,9 +33,9 @@ func (h *Libvirt) Create(vm *VMConfig) error {
 		"--import",
 		"--network", fmt.Sprintf("bridge=virbr0,model=virtio,mac=%s", vm.Network.MacAddress),
 		"--noautoconsole",
-		parseLibvirtMounts(vm.Mounts),
 	}
-	args = removeEmptyStrings(args)
+
+	args = append(args, parseLibvirtMounts(vm.Mount)...)
 
 	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer logFile.Close()
@@ -44,40 +44,21 @@ func (h *Libvirt) Create(vm *VMConfig) error {
 
 	err = cmd.Start()
 	if err != nil {
-		vm.LogError(err)
 		return err
 	}
 	return err
 }
 
-func removeEmptyStrings(strings []string) []string {
-	nonEmptyStrings := make([]string, 0, len(strings))
-
-	for _, str := range strings {
-		if str != "" {
-			nonEmptyStrings = append(nonEmptyStrings, str)
-		}
+func parseLibvirtMounts(mount Mount) []string {
+	home, _ := os.UserHomeDir()
+	path := strings.Replace(mount.HostPath, "~", home, -1)
+	mountCommand := []string{
+		"--filesystem",
+		fmt.Sprintf("type=mount,mode=passthrough,source=%s,target=%s", path, mount.GuestPath),
+		// fmt.Sprintf("%s,%s", path, m.Path),
 	}
 
-	return nonEmptyStrings
-}
-
-func parseLibvirtMounts(slice []Mount) string {
-	mounts := []string{}
-	for _, m := range slice {
-		home, _ := os.UserHomeDir()
-		path := strings.Replace(m.HostPath, "~", home, -1)
-		mounts = append(
-			mounts,
-			"--filesystem",
-			// fmt.Sprintf("type=mount,driver=virtio-9p,mode=passthrough,source=%s,target=%s", path, m.Path),
-			fmt.Sprintf("%s,%s", path, m.Path),
-		)
-	}
-	if len(mounts) == 0 {
-		return ""
-	}
-	return strings.Join(mounts, " ")
+	return mountCommand
 }
 func convertMemory(memory string) (string, error) {
 	ram := memory
@@ -109,7 +90,7 @@ func (h *Libvirt) Start(vm *VMConfig) error {
 	if err != nil {
 		return err
 	}
-	return err
+	return nil
 }
 
 func (h *Libvirt) Stop(vm *VMConfig) error {

@@ -17,6 +17,9 @@ var shellCommand = &cobra.Command{
 	ValidArgsFunction: namesBashCompletion,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load the machine data
+		if len(args) > 0 {
+			name = args[0]
+		}
 		machine, err := vm.Load(name)
 		if err != nil {
 			log.Error("the machine doesn't exist")
