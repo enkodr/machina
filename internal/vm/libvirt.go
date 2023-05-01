@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/enkodr/machina/internal/config"
 )
@@ -30,7 +31,7 @@ func (h *Libvirt) Create(vm *VMConfig) error {
 		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, vm.Name, "disk.img")),
 		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, vm.Name, "seed.img")),
 		"--import",
-		// "--filesystem", fmt.Sprintf("type=mount,mode=passthrough,source=%s,target=%s", m.Mounts[0].HostPath, m.Mounts[0].Path),
+		parseLibvirtMounts(vm.Mounts),
 		"--network", fmt.Sprintf("bridge=virbr0,model=virtio,mac=%s", vm.Network.MacAddress),
 		"--noautoconsole",
 	}
@@ -38,11 +39,27 @@ func (h *Libvirt) Create(vm *VMConfig) error {
 	cmd := exec.Command(command, args...)
 	err = cmd.Start()
 	if err != nil {
+		vm.LogError(err)
 		return err
 	}
 	return err
 }
 
+func parseLibvirtMounts(slice []Mount) string {
+	mounts := make([]string, len(slice))
+	for _, m := range slice {
+		home, _ := os.UserHomeDir()
+		path := strings.Replace(m.HostPath, "~", home, -1)
+		mounts = append(
+			mounts,
+			"--filesystem",
+			// fmt.Sprintf("type=mount,driver=virtio-9p,mode=passthrough,source=%s,target=%s", path, m.Path),
+			fmt.Sprintf("%s,%s", path, m.Path),
+		)
+	}
+
+	return strings.Join(mounts, " ")
+}
 func convertMemory(memory string) (string, error) {
 	ram := memory
 	if memory[len(memory)-1] == 'G' {
@@ -91,8 +108,13 @@ func (h *Libvirt) Stop(vm *VMConfig) error {
 }
 
 func (h *Libvirt) Status(vm *VMConfig) error {
-	command := "virt-install"
-	args := []string{}
+	cfg := config.LoadConfig()
+	command := "virsh"
+	args := []string{
+		"--connect", fmt.Sprintf("%s", cfg.Connection),
+		"domstate",
+		vm.Name,
+	}
 
 	cmd := exec.Command(command, args...)
 	err := cmd.Start()

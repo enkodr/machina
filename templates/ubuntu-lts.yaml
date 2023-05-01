@@ -44,8 +44,8 @@ scripts:
 # Mounts defines a set of mount points from the host into the VM, where the
 # `hostPath` is the path in the host and the `path` sets the path inside the VM 
 # where the mount will be defined. 
-# This will use `sshfs`.
+# This will use `virtio-9p` driver.
 mounts:
-- name: home
-  hostPath: "~"
-  path: "~/host"
+# - name: share
+  # hostPath: "/path/to/host/folder"
+  # path: "/path/to/guest/folder"

@@ -14,6 +14,7 @@ import (
 	"github.com/enkodr/machina/internal/osutil"
 	"github.com/enkodr/machina/internal/sshutil"
 	"github.com/enkodr/machina/internal/usrutil"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
@@ -85,6 +86,7 @@ func NewVM(name string) (*VMConfig, error) {
 	tpl := NewTemplate(name)
 	vm, err := tpl.Load()
 	if err != nil {
+		vm.LogError(err)
 		return nil, err
 	}
 
@@ -111,10 +113,12 @@ func NewVM(name string) (*VMConfig, error) {
 	net := netutil.NewNetwork()
 	netYaml, err := yaml.Marshal(net)
 	if err != nil {
+		vm.LogError(err)
 		return nil, err
 	}
 	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, name, "network.cfg"), netYaml, 0644)
 	if err != nil {
+		vm.LogError(err)
 		return nil, err
 	}
 	vm.Network = Network{
@@ -133,21 +137,25 @@ func NewVM(name string) (*VMConfig, error) {
 	}
 	usr, err := usrutil.NewUserData(&clCfg)
 	if err != nil {
+		vm.LogError(err)
 		return nil, err
 	}
 	usrYaml, err := yaml.Marshal(usr)
 	if err != nil {
+		vm.LogError(err)
 		return nil, err
 	}
 	usrYaml = append([]byte("#cloud-config\n"), usrYaml...)
 	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, name, "userdata.yaml"), usrYaml, 0644)
 	if err != nil {
+		vm.LogError(err)
 		return nil, err
 	}
 
 	// Save private key
 	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, name, "id_rsa"), clCfg.PrivateKey, 0600)
 	if err != nil {
+		vm.LogError(err)
 		return nil, err
 	}
 
@@ -169,6 +177,7 @@ func Load(name string) (*VMConfig, error) {
 	data, err := os.ReadFile(filepath.Join(cfg.Directories.Instances, name, "machina.yaml"))
 	err = yaml.Unmarshal(data, vm)
 	if err != nil {
+		vm.LogError(err)
 		return nil, err
 	}
 	if cfg.Hypervisor == "qemu" {
@@ -186,6 +195,7 @@ func (vm *VMConfig) DownloadImage() error {
 	imgDir := cfg.Directories.Images
 	fileName, err := imgutil.GetFilenameFromURL(vm.Image.URL)
 	if err != nil {
+		vm.LogError(err)
 		return err
 	}
 
@@ -193,12 +203,14 @@ func (vm *VMConfig) DownloadImage() error {
 
 	// check if hashes equal
 	if osutil.Checksum(localImage, vm.Image.Checksum) {
+		vm.LogError(err)
 		return nil
 	}
 
 	// download the image
 	err = netutil.DownloadAndSave(vm.Image.URL, imgDir)
 	if err != nil {
+		vm.LogError(err)
 		return err
 	}
 	return nil
@@ -219,6 +231,7 @@ func (vm *VMConfig) CreateDisks() error {
 	cmd := exec.Command(command, args...)
 	err := cmd.Run()
 	if err != nil {
+		vm.LogError(err)
 		return err
 	}
 
@@ -232,6 +245,7 @@ func (vm *VMConfig) CreateDisks() error {
 	cmd = exec.Command(command, args...)
 	err = cmd.Run()
 	if err != nil {
+		vm.LogError(err)
 		return err
 	}
 
@@ -288,6 +302,7 @@ func (vm *VMConfig) CopyContent(origin string, dest string) error {
 	cmd := exec.Command(command, args...)
 	err := cmd.Run()
 	if err != nil {
+		vm.LogError(err)
 		return err
 	}
 
@@ -300,10 +315,12 @@ func (vm *VMConfig) createScriptFiles() error {
 	vm.Scripts.Install += "echo 'source $HOME/.machinarc' >> $HOME/.bashrc\n"
 	err := os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, ".init.sh"), []byte(vm.Scripts.Install), 0744)
 	if err != nil {
+		vm.LogError(err)
 		return nil
 	}
 	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, ".machinarc"), []byte(vm.Scripts.Init), 0744)
 	if err != nil {
+		vm.LogError(err)
 		return nil
 	}
 	return nil
@@ -324,6 +341,7 @@ func (vm *VMConfig) RunInitScripts() error {
 	cmd := exec.Command(command, args...)
 	err := cmd.Run()
 	if err != nil {
+		vm.LogError(err)
 		return err
 	}
 
@@ -337,6 +355,7 @@ func (vm *VMConfig) RunInitScripts() error {
 	cmd = exec.Command(command, args...)
 	err = cmd.Run()
 	if err != nil {
+		vm.LogError(err)
 		return err
 	}
 
@@ -351,6 +370,7 @@ func (vm *VMConfig) RunInitScripts() error {
 	cmd = exec.Command(command, args...)
 	err = cmd.Run()
 	if err != nil {
+		vm.LogError(err)
 		return err
 	}
 
@@ -373,8 +393,22 @@ func (vm *VMConfig) Shell() error {
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	if err != nil {
+		vm.LogError(err)
 		return err
 	}
 
 	return nil
+}
+
+func (vm *VMConfig) LogError(err error) {
+	cfg := config.LoadConfig()
+	logrus.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: "2006-01-02 15:04:05",
+	})
+
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "errors.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	defer logFile.Close()
+	logrus.SetOutput(logFile)
+	logrus.Error(err)
 }

@@ -28,7 +28,7 @@ func (h *Qemu) Start(vm *VMConfig) error {
 		"-nographic",
 		"-netdev", fmt.Sprintf("bridge,id=%s,br=virbr0", vm.Network.NicName),
 		"-device", fmt.Sprintf("virtio-net-pci,netdev=%s,id=virtnet0,mac=%s", vm.Network.NicName, vm.Network.MacAddress),
-		parseMounts(vm.Mounts),
+		parseQemuMounts(vm.Mounts),
 		"-pidfile", fmt.Sprintf("%s/vm.pid", dir),
 		"-drive", fmt.Sprintf("if=virtio,format=qcow2,file=%s/disk.img", dir),
 		"-drive", fmt.Sprintf("if=virtio,format=raw,file=%s/seed.img", dir),
@@ -36,6 +36,7 @@ func (h *Qemu) Start(vm *VMConfig) error {
 	cmd := exec.Command(command, args...)
 	err := cmd.Start()
 	if err != nil {
+		vm.LogError(err)
 		return err
 	}
 
@@ -56,7 +57,7 @@ func (h *Qemu) Delete(vm *VMConfig) error {
 	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, vm.Name))
 }
 
-func parseMounts(slice []Mount) string {
+func parseQemuMounts(slice []Mount) string {
 	mounts := make([]string, len(slice))
 	for i, m := range slice {
 		home, _ := os.UserHomeDir()

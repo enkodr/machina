@@ -21,7 +21,10 @@ var deleteCommand = &cobra.Command{
 		if err != nil {
 			log.Error("the machine doesn't exist")
 		}
-
+		log.SetFormatter(&log.TextFormatter{
+			FullTimestamp:   true,
+			TimestampFormat: "2006-01-02 15:04:05",
+		})
 		// Start the machine
 		log.Info(fmt.Sprintf("Deleting machine '%s'", name))
 		vm.Delete()

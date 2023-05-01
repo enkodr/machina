@@ -23,14 +23,11 @@ var listCommand = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		cfg := config.LoadConfig()
-		dirs, err := os.ReadDir(cfg.Directories.Instances)
-		if err != nil {
-			log.Error("failed to get machines")
-		}
+		dirs, _ := os.ReadDir(cfg.Directories.Instances)
 
 		log.Info("List all machines")
 		w := tabwriter.NewWriter(os.Stdout, 10, 0, 2, ' ', tabwriter.Debug)
-		fmt.Fprintln(w, "Name\tIP\tStatus\tCPUs\tMemory\tDisk\tVariant")
+		fmt.Fprintln(w, "Name\t IP\t Status\t CPUs\t Memory\t Disk\t Variant")
 		for _, dir := range dirs {
 			data, _ := os.ReadFile(filepath.Join(cfg.Directories.Instances, dir.Name(), "machina.yaml"))
 			vm := &vm.VMConfig{}
@@ -39,7 +36,7 @@ var listCommand = &cobra.Command{
 			fmt.Fprintln(w,
 				vm.Name,
 				"\t", vm.Network.IPAddress,
-				"\t", "",
+				"\t", vm.Status(),
 				"\t", vm.Specs.CPUs,
 				"\t", vm.Specs.Memory,
 				"\t", vm.Specs.Disk,
