@@ -50,11 +50,12 @@ func (h *Libvirt) Create(vm *VMConfig) error {
 }
 
 func parseLibvirtMounts(mount Mount) []string {
-	home, _ := os.UserHomeDir()
-	path := strings.Replace(mount.HostPath, "~", home, -1)
+	if mount.Name == "" {
+		return []string{}
+	}
 	mountCommand := []string{
 		"--filesystem",
-		fmt.Sprintf("type=mount,mode=passthrough,source=%s,target=%s", path, mount.GuestPath),
+		fmt.Sprintf("type=mount,mode=passthrough,source=%s,target=%s", mount.HostPath, mount.GuestPath),
 		// fmt.Sprintf("%s,%s", path, m.Path),
 	}
 
