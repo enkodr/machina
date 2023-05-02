@@ -277,7 +277,6 @@ func (vm *VMConfig) CopyContent(origin string, dest string) error {
 	cfg := config.LoadConfig()
 	command := "scp"
 	args := []string{
-		"scp",
 		"-r",
 		"-o StrictHostKeyChecking=no",
 		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),

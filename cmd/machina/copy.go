@@ -43,7 +43,8 @@ var copyCommand = &cobra.Command{
 		// Get the machine
 		machine, err := vm.Load(name)
 		if err != nil {
-			log.Error("the machine doesn't exist")
+			log.Errorf("the machine %q doesn't exist", name)
+			os.Exit(0)
 		}
 
 		// Defiine the origin and destination
