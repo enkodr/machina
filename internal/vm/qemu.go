@@ -13,7 +13,7 @@ import (
 type Qemu struct{}
 
 func (h *Qemu) Create(vm *VMConfig) error {
-	return nil
+	return h.Start(vm)
 }
 
 func (h *Qemu) Start(vm *VMConfig) error {
@@ -28,11 +28,12 @@ func (h *Qemu) Start(vm *VMConfig) error {
 		"-nographic",
 		"-netdev", fmt.Sprintf("bridge,id=%s,br=virbr0", vm.Network.NicName),
 		"-device", fmt.Sprintf("virtio-net-pci,netdev=%s,id=virtnet0,mac=%s", vm.Network.NicName, vm.Network.MacAddress),
-		parseQemuMounts(vm.Mount),
 		"-pidfile", fmt.Sprintf("%s/vm.pid", dir),
 		"-drive", fmt.Sprintf("if=virtio,format=qcow2,file=%s/disk.img", dir),
 		"-drive", fmt.Sprintf("if=virtio,format=raw,file=%s/seed.img", dir),
 	}
+
+	args = append(args, parseQemuMounts(vm.Mount)...)
 	cmd := exec.Command(command, args...)
 	err := cmd.Start()
 	if err != nil {
@@ -43,20 +44,57 @@ func (h *Qemu) Start(vm *VMConfig) error {
 }
 
 func (h *Qemu) Stop(vm *VMConfig) error {
+	cfg := config.LoadConfig()
+	command := "ssh"
+	args := []string{
+		"-o StrictHostKeyChecking=no",
+		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
+		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
+		"sudo", "shutdown", "now",
+	}
+	cmd := exec.Command(command, args...)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (h *Qemu) Status(vm *VMConfig) (string, error) {
-	return "", nil
+	cfg := config.LoadConfig()
+	if _, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name, "vm.pid")); os.IsNotExist(err) {
+		return "shut off", nil
+	}
+	return "running", nil
 }
 
 func (h *Qemu) Delete(vm *VMConfig) error {
 	cfg := config.LoadConfig()
 
+	status, _ := h.Status(vm)
+	if status == "running" {
+		h.Stop(vm)
+	}
+
+	command := "ssh-keygen"
+	args := []string{
+		"-R",
+		vm.Network.IPAddress,
+	}
+	cmd := exec.Command(command, args...)
+	err := cmd.Start()
+	if err != nil {
+		return err
+	}
+
 	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, vm.Name))
 }
 
-func parseQemuMounts(mount Mount) string {
+func parseQemuMounts(mount Mount) []string {
+	if mount.Name == "" {
+		return []string{}
+	}
 	home, _ := os.UserHomeDir()
 	path := strings.Replace(mount.HostPath, "~", home, -1)
 	mountCommand := []string{
@@ -65,5 +103,5 @@ func parseQemuMounts(mount Mount) string {
 		"--device",
 		fmt.Sprintf("virtio-9p-pci,id=fs%d,fsdev=fsdev%d,mount_tag=%s", 0, 0, mount.Name),
 	}
-	return strings.Join(mountCommand, " ")
+	return mountCommand
 }

@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/enkodr/machina/internal/config"
@@ -61,24 +60,12 @@ func parseLibvirtMounts(mount Mount) []string {
 
 	return mountCommand
 }
-func convertMemory(memory string) (string, error) {
-	ram := memory
-	if memory[len(memory)-1] == 'G' {
-		mem, err := strconv.Atoi(memory[0 : len(memory)-1])
-		if err != nil {
-			return "", err
-		}
-		bytes := mem * 1024
-		ram = strconv.Itoa(bytes)
-	}
-	return ram, nil
-}
 
 func (h *Libvirt) Start(vm *VMConfig) error {
 	cfg := config.LoadConfig()
 	command := "virsh"
 	args := []string{
-		"--connect", fmt.Sprintf("%s", cfg.Connection),
+		"--connect", cfg.Connection,
 		"start",
 		vm.Name,
 	}
@@ -98,7 +85,7 @@ func (h *Libvirt) Stop(vm *VMConfig) error {
 	cfg := config.LoadConfig()
 	command := "virsh"
 	args := []string{
-		"--connect", fmt.Sprintf("%s", cfg.Connection),
+		"--connect", cfg.Connection,
 		"shutdown",
 		vm.Name,
 	}
@@ -119,7 +106,7 @@ func (h *Libvirt) Status(vm *VMConfig) (string, error) {
 	cfg := config.LoadConfig()
 	command := "virsh"
 	args := []string{
-		"--connect", fmt.Sprintf("%s", cfg.Connection),
+		"--connect", cfg.Connection,
 		"domstate",
 		vm.Name,
 	}
@@ -138,7 +125,7 @@ func (h *Libvirt) Delete(vm *VMConfig) error {
 	cfg := config.LoadConfig()
 	command := "virsh"
 	args := []string{
-		"--connect", fmt.Sprintf("%s", cfg.Connection),
+		"--connect", cfg.Connection,
 		"destroy",
 		vm.Name,
 	}
@@ -154,7 +141,7 @@ func (h *Libvirt) Delete(vm *VMConfig) error {
 	}
 
 	args = []string{
-		"--connect", fmt.Sprintf("%s", cfg.Connection),
+		"--connect", cfg.Connection,
 		"undefine",
 		vm.Name,
 	}
@@ -165,7 +152,7 @@ func (h *Libvirt) Delete(vm *VMConfig) error {
 	}
 
 	args = []string{
-		"--connect", fmt.Sprintf("%s", cfg.Connection),
+		"--connect", cfg.Connection,
 		"pool-destroy",
 		vm.Name,
 	}
@@ -176,7 +163,7 @@ func (h *Libvirt) Delete(vm *VMConfig) error {
 	}
 
 	args = []string{
-		"--connect", fmt.Sprintf("%s", cfg.Connection),
+		"--connect", cfg.Connection,
 		"pool-undefine",
 		vm.Name,
 	}

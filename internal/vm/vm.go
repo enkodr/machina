@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/enkodr/machina/internal/config"
@@ -411,4 +412,17 @@ func (vm *VMConfig) Shell() error {
 	}
 
 	return nil
+}
+
+func convertMemory(memory string) (string, error) {
+	ram := memory
+	if memory[len(memory)-1] == 'G' {
+		mem, err := strconv.Atoi(memory[0 : len(memory)-1])
+		if err != nil {
+			return "", err
+		}
+		bytes := mem * 1024
+		ram = strconv.Itoa(bytes)
+	}
+	return ram, nil
 }
