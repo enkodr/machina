@@ -6,6 +6,9 @@ on:
     - "v*"
 
 jobs:
+  test:
+    uses: ./.github/workflows/test.yaml
+  
   release:
     needs: [test]
     name: Build
