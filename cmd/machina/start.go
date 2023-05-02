@@ -2,6 +2,7 @@ package machina
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/enkodr/machina/internal/vm"
 	log "github.com/sirupsen/logrus"
@@ -22,7 +23,8 @@ var startCommand = &cobra.Command{
 		}
 		machine, err := vm.Load(name)
 		if err != nil {
-			log.Error("the machine doesn't exist")
+			log.Errorf("the machine %q doesn't exist", name)
+			os.Exit(0)
 		}
 
 		// Start the machine
