@@ -22,7 +22,8 @@ var deleteCommand = &cobra.Command{
 		}
 		vm, err := vm.Load(name)
 		if err != nil {
-			log.Error("the machine doesn't exist")
+			log.Errorf("the machine %q doesn't exist", name)
+			return
 		}
 		log.SetFormatter(&log.TextFormatter{
 			FullTimestamp:   true,

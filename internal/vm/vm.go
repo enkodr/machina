@@ -166,6 +166,9 @@ func Load(name string) (*VMConfig, error) {
 	vm := &VMConfig{}
 
 	data, err := os.ReadFile(filepath.Join(cfg.Directories.Instances, name, "machina.yaml"))
+	if err != nil {
+		return nil, err
+	}
 	err = yaml.Unmarshal(data, vm)
 	if err != nil {
 		return nil, err
