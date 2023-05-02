@@ -1,6 +1,6 @@
 # The name to use for the machine.
 # This needs to be a unique name in the system.
-name: ubuntu
+name: default
 
 # This value sets the OS variant o use. This is only needed for `libvirt` hypervisor
 # To grab a list of the ones available for your system you can just run 

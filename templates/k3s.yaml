@@ -1,3 +1,5 @@
+name: k3s
+
 extends: ubuntu
 
 scripts:
