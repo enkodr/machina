@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/enkodr/machina/internal/config"
@@ -21,7 +22,7 @@ func (h *Qemu) Start(vm *VMConfig) error {
 	cfg := config.LoadConfig()
 	dir := filepath.Join(cfg.Directories.Instances, vm.Name)
 	args := []string{
-		"-machine", "accel=kvm,type=q35",
+		"-machine", fmt.Sprintf("accel=%s,type=q35", getHypervisor()),
 		"-cpu", "host",
 		"-smp", vm.Specs.CPUs,
 		"-m", vm.Specs.Memory,
@@ -104,4 +105,15 @@ func parseQemuMounts(mount Mount) []string {
 		fmt.Sprintf("virtio-9p-pci,id=fs%d,fsdev=fsdev%d,mount_tag=%s", 0, 0, mount.Name),
 	}
 	return mountCommand
+}
+
+// Get Hypervisor driver
+func getHypervisor() string {
+	driver := "kvm"
+
+	if runtime.GOOS == "darwin" {
+		driver = "hvf"
+	}
+
+	return driver
 }

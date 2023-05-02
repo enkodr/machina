@@ -53,7 +53,7 @@ var createCommand = &cobra.Command{
 		vm.Wait()
 
 		// run scritps
-		log.Info("Running init scripts")
+		log.Info("Running install scripts")
 		err = vm.RunInitScripts()
 		if err != nil {
 			log.Fatal(err.Error())

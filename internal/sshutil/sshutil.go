@@ -104,7 +104,7 @@ func GenerateNewSSHKeys() ([]byte, []byte, error) {
 
 // Check if host is responding
 func IsResponding(ip string) bool {
-	timeout := time.Second
+	timeout := time.Second * 5
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, port), timeout)
 	if err != nil {
 		return false
