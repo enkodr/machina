@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/enkodr/machina/internal/config"
@@ -94,7 +95,7 @@ func NewVM(name string) (*VMConfig, error) {
 	// Check if VM already exists
 	_, err = os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name))
 	if !os.IsNotExist(err) {
-		return nil, errors.New("Machine already exists")
+		return nil, errors.New("machine already exists")
 	}
 
 	if cfg.Hypervisor == "qemu" {
@@ -155,7 +156,14 @@ func NewVM(name string) (*VMConfig, error) {
 
 	// Save machine file
 	vmYaml, err := yaml.Marshal(vm)
+	if err != nil {
+		return nil, err
+	}
+
 	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "machina.yaml"), vmYaml, 0644)
+	if err != nil {
+		return nil, err
+	}
 
 	return vm, nil
 
@@ -303,6 +311,13 @@ func (vm *VMConfig) createScriptFiles() error {
 		return nil
 	}
 
+	var mountName string
+	if cfg.Hypervisor == "qemu" {
+		mountName = vm.Mount.Name
+	} else {
+		mountName = vm.Mount.GuestPath
+	}
+
 	// "sudo mount -t 9p /home/machina/host host/",
 	initScript := fmt.Sprintf(`#! /bin/sh
 ### BEGIN INIT INFO
@@ -315,7 +330,7 @@ func (vm *VMConfig) createScriptFiles() error {
 # Description:       Start/stop machina service
 ### END INIT INFO
 mkdir -p %s
-sudo mount -t 9p %s %s`, vm.Mount.GuestPath, vm.Mount.GuestPath, vm.Mount.GuestPath)
+sudo mount -t 9p %s %s`, vm.Mount.GuestPath, mountName, vm.Mount.GuestPath)
 
 	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, ".init"), []byte(initScript), 0744)
 	if err != nil {
@@ -411,4 +426,17 @@ func (vm *VMConfig) Shell() error {
 	}
 
 	return nil
+}
+
+func convertMemory(memory string) (string, error) {
+	ram := memory
+	if memory[len(memory)-1] == 'G' {
+		mem, err := strconv.Atoi(memory[0 : len(memory)-1])
+		if err != nil {
+			return "", err
+		}
+		bytes := mem * 1024
+		ram = strconv.Itoa(bytes)
+	}
+	return ram, nil
 }
