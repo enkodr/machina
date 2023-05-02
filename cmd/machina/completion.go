@@ -1,7 +1,7 @@
 package machina
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/enkodr/machina/internal/config"
 	"github.com/spf13/cobra"
@@ -13,7 +13,7 @@ func bashCompleteInstanceNames(cmd *cobra.Command) ([]string, cobra.ShellCompDir
 
 	// Get instances names for completion
 	instances := []string{}
-	vms, err := ioutil.ReadDir(cfg.Directories.Instances)
+	vms, err := os.ReadDir(cfg.Directories.Instances)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
