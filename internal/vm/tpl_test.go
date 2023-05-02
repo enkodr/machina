@@ -67,7 +67,7 @@ func TestLocalFileLoadInvalidData(t *testing.T) {
 }
 
 func TestRemoteFileValidName(t *testing.T) {
-	name := "ubuntu-lts"
+	name := "default"
 	data, _ := os.ReadFile(fmt.Sprintf("../../templates/%s.yaml", name))
 	want := &VMConfig{}
 	err := yaml.Unmarshal(data, want)
@@ -117,7 +117,7 @@ func TestParseTemplate_InvalidYAML(t *testing.T) {
 
 func TestParseTemplateExtends(t *testing.T) {
 	want := []byte(`name: TestVM
-extends: ubuntu-lts
+extends: default
 `)
 
 	got, err := parseTemplate(want)
