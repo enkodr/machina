@@ -117,7 +117,7 @@ func TestParseTemplate_InvalidYAML(t *testing.T) {
 
 func TestParseTemplateExtends(t *testing.T) {
 	want := []byte(`name: TestVM
-extends: default
+extends: ubuntu
 `)
 
 	got, err := parseTemplate(want)
