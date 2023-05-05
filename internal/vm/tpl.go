@@ -1,7 +1,10 @@
 package vm
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 
@@ -94,4 +97,59 @@ func parseTemplate(tpl []byte) (*VMConfig, error) {
 	}
 
 	return vm, nil
+}
+
+// GetTemplateList gets the list of available templates
+func GetTemplateList() []string {
+	type GitHubContent struct {
+		Name string `json:"name"`
+		Type string `json:"type"`
+	}
+
+	url := fmt.Sprintf("https://api.github.com/repos/enkodr/machina/contents/templates")
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil
+	}
+
+	var contents []GitHubContent
+	if err := json.Unmarshal(body, &contents); err != nil {
+		return nil
+	}
+
+	var files []string
+	for _, c := range contents {
+		if c.Type == "file" {
+			file := strings.Split(c.Name, ".")[0]
+			files = append(files, file)
+		}
+	}
+
+	return files
+}
+
+func GetTemplate(name string) (string, error) {
+	tpl, err := netutil.Download(fmt.Sprintf("%s/%s.yaml", endpoint, name))
+	if err != nil {
+		return "", err
+	}
+
+	return string(tpl), err
 }
