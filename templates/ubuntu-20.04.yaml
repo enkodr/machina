@@ -1,9 +1,0 @@
-name: ubuntu
-
-extends: default
-
-variant: "ubuntu20.04"
-
-image : 
-  url: "https://cloud-images.ubuntu.com/jammy/20230426/focal-server-cloudimg-amd64.img"
-  checksum: "sha256:098f2637039ed366457802eb00e2b23d03fad3866e83eb8998107ef2c7bfd6ee"
