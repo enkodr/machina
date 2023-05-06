@@ -39,7 +39,7 @@ var deleteCommand = &cobra.Command{
 
 		if !forceDelete {
 			reader := bufio.NewReader(os.Stdin)
-			fmt.Printf("Are you certain you want to delete machine '%s' [y/n]: ", name)
+			fmt.Printf("Are you certain you want to delete machine '%s' [y/N]: ", name)
 			response, err := reader.ReadString('\n')
 			if err != nil {
 				log.Fatal(err)

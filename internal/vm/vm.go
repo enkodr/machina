@@ -311,18 +311,21 @@ func (vm *VMConfig) createScriptFiles() error {
 	}
 
 	// Systemd service
+	// sudo journalctl -xeu machina.service
 	sysDSvc := `[Unit]
 Description=machina mount
-After=network.target
 
 [Service]
-Type=simple
-ExecStart=/etc/machina/boot.sh
-ExecStop=
+Type=forking
+User=machina
+Group=machina
+ExecStart=/etc/machina/machina
+StandardOutput=journal
 	
 [Install]
 WantedBy=multi-user.target
 `
+
 	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "bin/machina.service"), []byte(sysDSvc), 0744)
 	if err != nil {
 		return nil
@@ -332,11 +335,13 @@ WantedBy=multi-user.target
 	installScript := `
 sudo mkdir -p /etc/machina
 echo 'source /etc/machina/machinarc' >> $HOME/.bashrc
-sudo mv /tmp/machina/machina.service /etc/systemd/system/machina.service
 sudo mv /tmp/machina/* /etc/machina
+sudo chcon -R -t bin_t /etc/machina/machina
+sudo cp /etc/machina/machina.service /etc/systemd/system/machina.service
+sudo chmod 664 /etc/systemd/system/machina.service
 sudo systemctl daemon-reload
-sudo systemctl enable machina
-sudo systemctl start machina
+sudo systemctl enable machina.service
+sudo systemctl start machina.service
 `
 	vm.Scripts.Install += installScript
 	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "bin/install.sh"), []byte(vm.Scripts.Install), 0744)
@@ -351,18 +356,18 @@ sudo systemctl start machina
 	} else {
 		mountName = vm.Mount.GuestPath
 	}
+	initScript := fmt.Sprintf(`#!/bin/bash
+HOST_PATH="%s"
+GUEST_PATH="%s"
+if [[ "$GUEST_PATH" != "" ]]; then
+	mkdir -p $GUEST_PATH
+	sudo mount -t 9p $HOST_PATH $GUEST_PATH
+fi
 
-	initScript := ""
-	if vm.Mount.Name != "" {
-		initScript = fmt.Sprintf(`#!/bin/bash
-mkdir -p %s
-mount -t 9p %s %s
-`, vm.Mount.GuestPath, mountName, vm.Mount.GuestPath)
-	} else {
-		initScript = "#!/bin/bash"
-	}
+exit 0
+`, mountName, vm.Mount.GuestPath)
 
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "bin/boot.sh"), []byte(initScript), 0744)
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "bin/machina"), []byte(initScript), 0744)
 	if err != nil {
 		return nil
 	}
