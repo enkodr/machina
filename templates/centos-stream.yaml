@@ -1,16 +1,16 @@
 # The name to use for the machine.
 # This needs to be a unique name in the system.
-name: ubuntu
+name: centos-stream
 
 # This value sets the OS variant o use. This is only needed for `libvirt` hypervisor
 # To grab a list of the ones available for your system you can just run 
 # `virt-install --os-variant list`
-variant: "ubuntu22.04"
+variant: "centos-stream9"
 
 # The image to be used to provision the machine
 image : 
-  url: "https://cloud-images.ubuntu.com/jammy/20230428/jammy-server-cloudimg-amd64.img"
-  checksum: "sha256:3e1898e9a0cc39df7d9c6af518584d53a647dabfbba6595d1a09dd82cabe8a87"
+  url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-20230501.0.x86_64.qcow2"
+  checksum: "sha256:0055ff05fa5a1fc0954c8a6ae63636fd3a1170c96a1bbd14f2677c3a919b7f0c"
   
 # The user credentials to be set for the default user.
 # This user will have root access without asking for password.
@@ -41,13 +41,4 @@ scripts:
   # The `init` script is invoced by the `.bashrc` shell
   init: |
     #!/bin/bash
-    echo "Welcome to your virtual machine"
-
-# Mounts defines a set of mount points from the host into the VM, where the
-# `hostPath` is the path in the host and the `guestPath` sets the path inside the VM 
-# where the mount will be defined. 
-# This will use `virtio-9p` driver.
-mount:
-  # name: share
-  # hostPath: "/path/to/host/folder"
-  # guestPath: "/path/to/guest/folder"
+    echo "Welcome to CentOS Stream"

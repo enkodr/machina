@@ -93,6 +93,8 @@ func parseTemplate(tpl []byte) (*VMConfig, error) {
 			return nil, err
 		}
 		vm.Extends = base.Extends
+		base.Scripts = Scripts{}
+		base.Mount = Mount{}
 		mergo.Merge(vm, base)
 	}
 
