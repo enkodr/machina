@@ -303,14 +303,48 @@ func (vm *VMConfig) CopyContent(origin string, dest string) error {
 
 // Creates the script files from the template
 func (vm *VMConfig) createScriptFiles() error {
+	// Prepare
 	cfg := config.LoadConfig()
-	vm.Scripts.Install += "echo 'source $HOME/.machinarc' >> $HOME/.bashrc\n"
-	vm.Scripts.Install += "sudo mv $HOME/.init /etc/init.d/machina && sudo update-rc.d machina defaults && sh /etc/init.d/machina\n"
-	err := os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, ".install"), []byte(vm.Scripts.Install), 0744)
+	err := os.MkdirAll(filepath.Join(cfg.Directories.Instances, vm.Name, "bin"), 0755)
 	if err != nil {
 		return nil
 	}
 
+	// Systemd service
+	sysDSvc := `[Unit]
+Description=machina mount
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/etc/machina/boot.sh
+ExecStop=
+	
+[Install]
+WantedBy=multi-user.target
+`
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "bin/machina.service"), []byte(sysDSvc), 0744)
+	if err != nil {
+		return nil
+	}
+
+	// Install script
+	installScript := `
+sudo mkdir -p /etc/machina
+echo 'source /etc/machina/machinarc' >> $HOME/.bashrc
+sudo mv /tmp/machina/machina.service /etc/systemd/system/machina.service
+sudo mv /tmp/machina/* /etc/machina
+sudo systemctl daemon-reload
+sudo systemctl enable machina
+sudo systemctl start machina
+`
+	vm.Scripts.Install += installScript
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "bin/install.sh"), []byte(vm.Scripts.Install), 0744)
+	if err != nil {
+		return nil
+	}
+
+	// Boot script
 	var mountName string
 	if cfg.Hypervisor == "qemu" {
 		mountName = vm.Mount.Name
@@ -318,26 +352,22 @@ func (vm *VMConfig) createScriptFiles() error {
 		mountName = vm.Mount.GuestPath
 	}
 
-	// "sudo mount -t 9p /home/machina/host host/",
-	initScript := fmt.Sprintf(`#! /bin/sh
-### BEGIN INIT INFO
-# Provides:          machina 
-# Required-Start:    $local_fs $remote_fs
-# Required-Stop:     $local_fs $remote_fs
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
-# Short-Description: Machina init script
-# Description:       Start/stop machina service
-### END INIT INFO
+	initScript := ""
+	if vm.Mount.Name != "" {
+		initScript = fmt.Sprintf(`#!/bin/bash
 mkdir -p %s
-sudo mount -t 9p %s %s`, vm.Mount.GuestPath, mountName, vm.Mount.GuestPath)
+mount -t 9p %s %s
+`, vm.Mount.GuestPath, mountName, vm.Mount.GuestPath)
+	} else {
+		initScript = "#!/bin/bash"
+	}
 
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, ".init"), []byte(initScript), 0744)
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "bin/boot.sh"), []byte(initScript), 0744)
 	if err != nil {
 		return nil
 	}
 
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, ".machinarc"), []byte(vm.Scripts.Init), 0644)
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "bin/machinarc"), []byte(vm.Scripts.Init), 0644)
 	if err != nil {
 		return nil
 	}
@@ -348,43 +378,18 @@ sudo mount -t 9p %s %s`, vm.Mount.GuestPath, mountName, vm.Mount.GuestPath)
 func (vm *VMConfig) RunInitScripts() error {
 	cfg := config.LoadConfig()
 
-	// Copies the install script into the VM
+	// Copies the scripts
 	command := "scp"
 	args := []string{
 		"-o", "StrictHostKeyChecking=no",
 		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
-		filepath.Join(cfg.Directories.Instances, vm.Name, ".install"),
-		fmt.Sprintf("%s@%s:/tmp/install", vm.Credentials.Username, vm.Network.IPAddress),
+		"-r",
+		filepath.Join(cfg.Directories.Instances, vm.Name, "bin/"),
+		fmt.Sprintf("%s@%s:/tmp/machina", vm.Credentials.Username, vm.Network.IPAddress),
 	}
+
 	cmd := exec.Command(command, args...)
 	err := cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	// Copies the init script into the VM
-	command = "scp"
-	args = []string{
-		"-o", "StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
-		filepath.Join(cfg.Directories.Instances, vm.Name, ".init"),
-		fmt.Sprintf("%s@%s:/home/%s/.init", vm.Credentials.Username, vm.Network.IPAddress, vm.Credentials.Username),
-	}
-	cmd = exec.Command(command, args...)
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	// Copies the startup script into the VM
-	args = []string{
-		"-o", "StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
-		filepath.Join(cfg.Directories.Instances, vm.Name, ".machinarc"),
-		fmt.Sprintf("%s@%s:/home/%s/.machinarc", vm.Credentials.Username, vm.Network.IPAddress, vm.Credentials.Username),
-	}
-	cmd = exec.Command(command, args...)
-	err = cmd.Run()
 	if err != nil {
 		return err
 	}
@@ -395,7 +400,7 @@ func (vm *VMConfig) RunInitScripts() error {
 		"-o StrictHostKeyChecking=no",
 		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
 		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
-		"/tmp/install",
+		"/tmp/machina/install.sh",
 	}
 	cmd = exec.Command(command, args...)
 	err = cmd.Run()
@@ -403,7 +408,8 @@ func (vm *VMConfig) RunInitScripts() error {
 		return err
 	}
 
-	return nil
+	// Cleanup
+	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, vm.Name, "bin"))
 }
 
 func (vm *VMConfig) Shell() error {
