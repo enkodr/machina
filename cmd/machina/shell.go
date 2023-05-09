@@ -10,12 +10,13 @@ import (
 )
 
 var shellCommand = &cobra.Command{
-	Use:   "shell",
-	Short: "Enters a machine shell",
+	Use:     "shell",
+	Short:   "Enters a machine shell",
+	Aliases: []string{"sh"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateName(cmd, args)
 	},
-	ValidArgsFunction: namesBashCompletion,
+	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load the machine data
 		if len(args) > 0 {

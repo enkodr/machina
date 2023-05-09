@@ -15,7 +15,7 @@ var startCommand = &cobra.Command{
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateName(cmd, args)
 	},
-	ValidArgsFunction: namesBashCompletion,
+	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load the machine data
 		if len(args) > 0 {

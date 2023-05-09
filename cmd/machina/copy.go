@@ -11,22 +11,20 @@ import (
 )
 
 var copyCommand = &cobra.Command{
-	Use:   "copy",
-	Short: "Copies files/directories from the host to the VM and vice-versa",
-	Args: func(cmd *cobra.Command, args []string) error {
+	Use:               "copy",
+	Short:             "Copies files/directories from the host to the VM and vice-versa",
+	Aliases:           []string{"cp"},
+	ValidArgsFunction: bashCompleteInstanceNamesConnection,
+	Run: func(cmd *cobra.Command, args []string) {
+		// Load the machine data
+		if len(args) > 0 {
+			name = args[0]
+		}
 		if len(args) < 2 {
 			log.Error("Error!\n")
 			log.Info("\tmachina copy <host_path> <machine_name>:<machine_path>\n")
 			log.Info("\tmachina copy <machine_name>:<machine_path> <host_path>\n")
 			os.Exit(0)
-		}
-		return nil
-	},
-	ValidArgsFunction: namesBashCompletion,
-	Run: func(cmd *cobra.Command, args []string) {
-		// Load the machine data
-		if len(args) > 0 {
-			name = args[0]
 		}
 
 		// Identify the origin from copy (Host or VM)
