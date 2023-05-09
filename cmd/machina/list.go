@@ -12,12 +12,13 @@ import (
 )
 
 var listCommand = &cobra.Command{
-	Use:   "list",
-	Short: "Lists all created machines",
+	Use:     "list",
+	Short:   "Lists all created machines",
+	Aliases: []string{"ls"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateName(cmd, args)
 	},
-	ValidArgsFunction: namesBashCompletion,
+	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		cfg := config.LoadConfig()

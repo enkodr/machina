@@ -10,12 +10,13 @@ import (
 )
 
 var templateCommand = &cobra.Command{
-	Use:   "template",
-	Short: "Lists and gets the available templates",
+	Use:     "template",
+	Short:   "Lists and gets the available templates",
+	Aliases: []string{"tpl"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateName(cmd, args)
 	},
-	ValidArgsFunction: namesBashCompletion,
+	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load the machine data
 		var tplName string

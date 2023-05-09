@@ -16,12 +16,13 @@ var (
 )
 
 var deleteCommand = &cobra.Command{
-	Use:   "delete",
-	Short: "Delete a machine",
+	Use:     "delete",
+	Short:   "Delete a machine",
+	Aliases: []string{"rm"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateName(cmd, args)
 	},
-	ValidArgsFunction: namesBashCompletion,
+	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load the machine data
 		if len(args) > 0 {

@@ -22,7 +22,3 @@ func validateName(cmd *cobra.Command, args []string) error {
 	name = "default"
 	return nil
 }
-
-func namesBashCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return bashCompleteInstanceNames(cmd)
-}
