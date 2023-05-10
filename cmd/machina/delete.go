@@ -53,7 +53,10 @@ var deleteCommand = &cobra.Command{
 		if forceDelete {
 			// Delete the machine
 			log.Info(fmt.Sprintf("Deleting machine '%s'", name))
-			vm.Delete()
+			err = vm.Delete()
+			if err != nil {
+				log.Error("Error deleting the machine")
+			}
 		}
 
 	},

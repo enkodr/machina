@@ -24,12 +24,16 @@ var startCommand = &cobra.Command{
 		machine, err := vm.Load(name)
 		if err != nil {
 			log.Errorf("the machine %q doesn't exist", name)
-			os.Exit(0)
+			os.Exit(1)
 		}
 
 		// Start the machine
 		log.Info(fmt.Sprintf("Starting machine '%s'", name))
-		machine.Start()
+		err = machine.Start()
+		if err != nil {
+			log.Error("failed to create the machine")
+			os.Exit(1)
+		}
 
 		// Wait until machine is ready
 		log.Info(fmt.Sprintf("Waiting for machine '%s'", name))
