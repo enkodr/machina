@@ -57,7 +57,11 @@ var copyCommand = &cobra.Command{
 
 		// Copy the content
 		log.Info("Copying content...")
-		machine.CopyContent(origin, dest)
+		err = machine.CopyContent(origin, dest)
+		if err != nil {
+			log.Error("Error copying content")
+			os.Exit(1)
+		}
 
 		log.Info("Done!\n")
 

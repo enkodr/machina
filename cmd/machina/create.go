@@ -1,6 +1,8 @@
 package machina
 
 import (
+	"os"
+
 	"github.com/enkodr/machina/internal/vm"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -24,28 +26,32 @@ var createCommand = &cobra.Command{
 		log.Info("Creating necessary files")
 		vm, err := vm.NewVM(name)
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Error("error creating files")
+			os.Exit(1)
 		}
 
 		// download the distro image used for the machine
 		log.Info("Downloading image")
 		err = vm.DownloadImage()
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Error("error downoading image")
+			os.Exit(1)
 		}
 
 		// create boot and seed disks
 		log.Info("Create boot and seed disks")
 		err = vm.CreateDisks()
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Error("error creating boot and seed disks")
+			os.Exit(1)
 		}
 
 		// create the VM
 		log.Info("Create and start the VM")
 		err = vm.Create()
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Error("error creating machine")
+			os.Exit(1)
 		}
 
 		// wait until the VM reaches running state
@@ -56,7 +62,8 @@ var createCommand = &cobra.Command{
 		log.Info("Running install scripts")
 		err = vm.RunInitScripts()
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Error("error running install scripts")
+			os.Exit(1)
 		}
 
 	},

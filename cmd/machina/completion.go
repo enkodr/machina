@@ -13,7 +13,7 @@ func bashCompleteInstanceNames(cmd *cobra.Command, args []string, toComplete str
 	cfg := config.LoadConfig()
 
 	// Get instances names for completion
-	instances := []string{}
+	var instances []string
 	vms, err := os.ReadDir(cfg.Directories.Instances)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault

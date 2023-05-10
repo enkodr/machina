@@ -29,8 +29,11 @@ var shellCommand = &cobra.Command{
 		}
 		// Entering the machine shell
 		log.Info(fmt.Sprintf("Enter machine's '%s' shell", name))
-		machine.Shell()
-
+		err = machine.Shell()
+		if err != nil {
+			log.Errorf("error entering machine's %q shell", name)
+			os.Exit(1)
+		}
 	},
 }
 
