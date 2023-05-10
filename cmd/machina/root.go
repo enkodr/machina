@@ -20,5 +20,8 @@ func Execute() {
 
 func validateName(cmd *cobra.Command, args []string) error {
 	name = "default"
+	if len(args) > 0 {
+		name = args[0]
+	}
 	return nil
 }

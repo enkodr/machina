@@ -27,8 +27,8 @@ var shellCommand = &cobra.Command{
 			log.Errorf("the machine %q doesn't exist", name)
 			os.Exit(0)
 		}
-		// Start the machine
-		log.Info(fmt.Sprintf("Enter the machine '%s' shell", name))
+		// Entering the machine shell
+		log.Info(fmt.Sprintf("Enter machine's '%s' shell", name))
 		machine.Shell()
 
 	},

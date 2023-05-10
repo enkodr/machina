@@ -102,6 +102,27 @@ func (h *Libvirt) Stop(vm *VMConfig) error {
 	return err
 }
 
+func (h *Libvirt) ForceStop(vm *VMConfig) error {
+	cfg := config.LoadConfig()
+	command := "virsh"
+	args := []string{
+		"--connect", cfg.Connection,
+		"destroy",
+		vm.Name,
+	}
+
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	defer logFile.Close()
+	cmd := exec.Command(command, args...)
+	cmd.Stdout = logFile
+
+	err := cmd.Start()
+	if err != nil {
+		return err
+	}
+	return err
+}
+
 func (h *Libvirt) Status(vm *VMConfig) (string, error) {
 	cfg := config.LoadConfig()
 	command := "virsh"

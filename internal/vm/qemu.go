@@ -62,6 +62,21 @@ func (h *Qemu) Stop(vm *VMConfig) error {
 	return nil
 }
 
+func (h *Qemu) ForceStop(vm *VMConfig) error {
+	command := "kill"
+	args := []string{
+		"-9",
+		h.getPID(vm),
+	}
+	cmd := exec.Command(command, args...)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (h *Qemu) Status(vm *VMConfig) (string, error) {
 	cfg := config.LoadConfig()
 	if _, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name, "vm.pid")); os.IsNotExist(err) {
@@ -116,4 +131,10 @@ func getHypervisor() string {
 	}
 
 	return driver
+}
+
+func (h *Qemu) getPID(vm *VMConfig) string {
+	cfg := config.LoadConfig()
+	data, _ := os.ReadFile(filepath.Join(cfg.Directories.Instances, vm.Name, "vm.pid"))
+	return string(data)
 }

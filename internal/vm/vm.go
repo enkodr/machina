@@ -78,6 +78,7 @@ type Hypervisor interface {
 	Create(vm *VMConfig) error
 	Start(vm *VMConfig) error
 	Stop(vm *VMConfig) error
+	ForceStop(vm *VMConfig) error
 	Status(vm *VMConfig) (string, error)
 	Delete(vm *VMConfig) error
 }
@@ -268,6 +269,11 @@ func (vm *VMConfig) Start() error {
 // Stops a running VM
 func (vm *VMConfig) Stop() error {
 	return vm.Hypervisor.Stop(vm)
+}
+
+// Force stops a running VM
+func (vm *VMConfig) ForceStop() error {
+	return vm.Hypervisor.ForceStop(vm)
 }
 
 // Gets the status of a VM

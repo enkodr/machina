@@ -21,6 +21,7 @@ var healthCommand = &cobra.Command{
 		fmt.Printf("Checking if dependencies are installed...\n")
 
 		var deps []string
+		// List of all the dependencies
 		if runtime.GOOS == "linux" {
 			deps = []string{
 				"cloud-localds",
@@ -37,6 +38,7 @@ var healthCommand = &cobra.Command{
 				"qemu-system-x86_64",
 			}
 		}
+		// Check if the dependencies are installed and show the outcome
 		for _, dep := range deps {
 			if packageInstalled(dep) {
 				fmt.Fprintln(w, fmt.Sprintf("%s\tinstalled", dep))
@@ -52,6 +54,7 @@ func init() {
 	rootCommand.AddCommand(healthCommand)
 }
 
+// Check if a dpendency is installed
 func packageInstalled(pkg string) bool {
 	_, err := exec.LookPath(pkg)
 
