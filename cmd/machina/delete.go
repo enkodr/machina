@@ -24,20 +24,17 @@ var deleteCommand = &cobra.Command{
 	},
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Load the machine data
 		if len(args) > 0 {
 			name = args[0]
 		}
+		// Load the machine data
 		vm, err := vm.Load(name)
 		if err != nil {
 			log.Errorf("the machine %q doesn't exist", name)
 			return
 		}
-		// log.SetFormatter(&log.TextFormatter{
-		// 	FullTimestamp:   true,
-		// 	TimestampFormat: "2006-01-02 15:04:05",
-		// })
 
+		// Confirm if the machine will be deleted
 		if !forceDelete {
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Printf("Are you certain you want to delete machine '%s' [y/N]: ", name)

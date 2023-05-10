@@ -32,8 +32,12 @@ var stopCommand = &cobra.Command{
 		}
 
 		// Start the machine
-		log.Info(fmt.Sprintf("Starting machine '%s'", name))
-		machine.Stop()
+		log.Info(fmt.Sprintf("Stoping machine '%s'", name))
+		if force {
+			machine.ForceStop()
+		} else {
+			machine.Stop()
+		}
 	},
 }
 

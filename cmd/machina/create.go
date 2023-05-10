@@ -27,32 +27,32 @@ var createCommand = &cobra.Command{
 			log.Fatal(err.Error())
 		}
 
-		// download the image
+		// download the distro image used for the machine
 		log.Info("Downloading image")
 		err = vm.DownloadImage()
 		if err != nil {
 			log.Fatal(err.Error())
 		}
 
-		// create disks
-		log.Info("Create boot disk")
+		// create boot and seed disks
+		log.Info("Create boot and seed disks")
 		err = vm.CreateDisks()
 		if err != nil {
 			log.Fatal(err.Error())
 		}
 
-		// create VM
+		// create the VM
 		log.Info("Create and start the VM")
 		err = vm.Create()
 		if err != nil {
 			log.Fatal(err.Error())
 		}
 
-		// wait until is running
+		// wait until the VM reaches running state
 		log.Info("Waiting for the machine to become ready")
 		vm.Wait()
 
-		// run scritps
+		// run installation scripts
 		log.Info("Running install scripts")
 		err = vm.RunInitScripts()
 		if err != nil {

@@ -27,7 +27,8 @@ var copyCommand = &cobra.Command{
 			os.Exit(0)
 		}
 
-		// Identify the origin from copy (Host or VM)
+		// As the user needs to pass two arguments and those can be in any direction
+		// (host -> VM or VM -> host), this logic will identify the direction
 		hostToVM := true
 		origin := args[0]
 		dest := args[1]
@@ -38,7 +39,7 @@ var copyCommand = &cobra.Command{
 			name = strings.Split(dest, ":")[0]
 		}
 
-		// Get the machine
+		// Get the machine from the configuration file
 		machine, err := vm.Load(name)
 		if err != nil {
 			log.Errorf("the machine %q doesn't exist", name)
@@ -55,13 +56,8 @@ var copyCommand = &cobra.Command{
 		}
 
 		// Copy the content
-		log.Info("Copying content... ")
-
-		// Start the machine
+		log.Info("Copying content...")
 		machine.CopyContent(origin, dest)
-
-		// Wait until machine is ready
-		machine.Wait()
 
 		log.Info("Done!\n")
 

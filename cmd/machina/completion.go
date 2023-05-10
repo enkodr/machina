@@ -24,6 +24,7 @@ func bashCompleteInstanceNames(cmd *cobra.Command, args []string, toComplete str
 	return instances, cobra.ShellCompDirectiveNoFileComp
 }
 
+// Get's the existing VM list if a format easier to complete
 func bashCompleteInstanceNamesConnection(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	instances, _ := bashCompleteInstanceNames(cmd, args, toComplete)
 	size := len(instances)

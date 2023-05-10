@@ -26,6 +26,7 @@ var listCommand = &cobra.Command{
 
 		log.Info("List all machines")
 
+		// Create a new visual table and set the header titles
 		table := simpletable.New()
 		table.Header = &simpletable.Header{
 			Cells: []*simpletable.Cell{
@@ -39,6 +40,7 @@ var listCommand = &cobra.Command{
 			},
 		}
 
+		// Add the content for all the rows
 		for _, dir := range dirs {
 			vmc, _ := vm.Load(dir.Name())
 			status, err := vmc.Status()
@@ -57,6 +59,7 @@ var listCommand = &cobra.Command{
 			table.Body.Cells = append(table.Body.Cells, r)
 		}
 
+		// Print the table
 		table.SetStyle(simpletable.StyleDefault)
 		fmt.Println(table.String())
 	},
