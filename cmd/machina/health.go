@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"text/tabwriter"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +47,11 @@ var healthCommand = &cobra.Command{
 				fmt.Fprintln(w, fmt.Sprintf("%s\tnot installed", dep))
 			}
 		}
-		w.Flush()
+		err := w.Flush()
+		if err != nil {
+			log.Error("error presenting information")
+			os.Exit(1)
+		}
 	},
 }
 
