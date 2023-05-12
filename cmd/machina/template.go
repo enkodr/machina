@@ -2,10 +2,10 @@ package machina
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/alexeyco/simpletable"
 	"github.com/enkodr/machina/internal/vm"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -20,18 +20,16 @@ var templateCommand = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load the machine data
 		var tplName string
-		if len(args) > 0 {
-			tplName = args[0]
-		}
 
 		if tplName != "" {
 			tpl, err := vm.GetTemplate(tplName)
 			if err != nil {
-				log.Errorf("Failed to get template %s", tplName)
+				fmt.Fprintf(os.Stderr, "Failed to get template %s\n", tplName)
+				os.Exit(1)
 			}
 			fmt.Println(tpl)
 		} else {
-			log.Info("Available templates")
+			fmt.Println("Available templates")
 			table := simpletable.New()
 			table.Header = &simpletable.Header{
 				Cells: []*simpletable.Cell{
@@ -50,7 +48,7 @@ var templateCommand = &cobra.Command{
 			table.SetStyle(simpletable.StyleDefault)
 			fmt.Println(table.String())
 
-			log.Println("Use 'machina template <name>' to get a specific template.")
+			fmt.Printf("Use 'machina template <name>' to get a specific template.\n")
 		}
 
 	},

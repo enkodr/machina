@@ -7,7 +7,6 @@ import (
 	"runtime"
 	"text/tabwriter"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -22,8 +21,8 @@ var healthCommand = &cobra.Command{
 		fmt.Printf("Checking if dependencies are installed...\n")
 
 		var deps []string
-		// List of all the dependencies
 		if runtime.GOOS == "linux" {
+			// Dependencies for Linux
 			deps = []string{
 				"cloud-localds",
 				"genisoimage",
@@ -35,10 +34,12 @@ var healthCommand = &cobra.Command{
 				"virsh",
 			}
 		} else {
+			// Dependenciesfor MacOS
 			deps = []string{
 				"qemu-system-x86_64",
 			}
 		}
+
 		// Check if the dependencies are installed and show the outcome
 		for _, dep := range deps {
 			if packageInstalled(dep) {
@@ -49,7 +50,7 @@ var healthCommand = &cobra.Command{
 		}
 		err := w.Flush()
 		if err != nil {
-			log.Error("error presenting information")
+			fmt.Fprintln(os.Stderr, "Error presenting information")
 			os.Exit(1)
 		}
 	},

@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/enkodr/machina/internal/vm"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -19,19 +18,17 @@ var shellCommand = &cobra.Command{
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load the machine data
-		if len(args) > 0 {
-			name = args[0]
-		}
 		machine, err := vm.Load(name)
 		if err != nil {
-			log.Errorf("the machine %q doesn't exist", name)
-			os.Exit(0)
+			fmt.Fprintf(os.Stderr, "Machine %q does not exist\n", name)
+			os.Exit(1)
 		}
+
 		// Entering the machine shell
-		log.Info(fmt.Sprintf("Enter machine's '%s' shell", name))
+		fmt.Println(fmt.Sprintf("Enter machine's '%s' shell\n", name))
 		err = machine.Shell()
 		if err != nil {
-			log.Errorf("error entering machine's %q shell", name)
+			fmt.Fprintf(os.Stderr, "Error entering machine's %q shell\n", name)
 			os.Exit(1)
 		}
 	},

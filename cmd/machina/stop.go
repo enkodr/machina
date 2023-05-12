@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/enkodr/machina/internal/vm"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -22,26 +21,25 @@ var stopCommand = &cobra.Command{
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load the machine data
-		if len(args) > 0 {
-			name = args[0]
-		}
 		machine, err := vm.Load(name)
 		if err != nil {
-			log.Errorf("the machine %q doesn't exist", name)
-			os.Exit(0)
+			fmt.Fprintf(os.Stderr, "Machine %q doesn't exist\n", name)
+			os.Exit(1)
 		}
 
 		// Start the machine
-		log.Info(fmt.Sprintf("Stoping machine '%s'", name))
+		fmt.Printf("Stoping machine '%s'\n", name)
 		if force {
 			err = machine.ForceStop()
 		} else {
 			err = machine.Stop()
 		}
 		if err != nil {
-			log.Error("error stoping the machine information")
+			fmt.Fprintf(os.Stderr, "Error stoping the machine information\n")
 			os.Exit(1)
 		}
+
+		fmt.Printf("Done!\n")
 	},
 }
 

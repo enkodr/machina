@@ -7,7 +7,6 @@ import (
 	"github.com/alexeyco/simpletable"
 	"github.com/enkodr/machina/internal/config"
 	"github.com/enkodr/machina/internal/vm"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -23,8 +22,6 @@ var listCommand = &cobra.Command{
 
 		cfg := config.LoadConfig()
 		dirs, _ := os.ReadDir(cfg.Directories.Instances)
-
-		log.Info("List all machines")
 
 		// Create a new visual table and set the header titles
 		table := simpletable.New()
