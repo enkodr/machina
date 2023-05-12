@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/enkodr/machina/internal/vm"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -18,27 +17,28 @@ var startCommand = &cobra.Command{
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load the machine data
-		if len(args) > 0 {
-			name = args[0]
-		}
 		machine, err := vm.Load(name)
 		if err != nil {
-			log.Errorf("the machine %q doesn't exist", name)
+			fmt.Fprintf(os.Stderr, "the machine %q doesn't exist\n", name)
 			os.Exit(1)
 		}
 
 		// Start the machine
-		log.Info(fmt.Sprintf("Starting machine '%s'", name))
+		fmt.Printf("Starting machine '%s'\n", name)
 		err = machine.Start()
 		if err != nil {
-			log.Error("failed to create the machine")
+			fmt.Fprintf(os.Stderr, "Failed to create the machine\n")
 			os.Exit(1)
 		}
 
 		// Wait until machine is ready
-		log.Info(fmt.Sprintf("Waiting for machine '%s'", name))
-		machine.Wait()
+		fmt.Printf("Waiting for machine '%s'\n", name)
+		err = machine.Wait()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Machine seems to be stuck in start process\n")
+		}
 
+		fmt.Printf("Done!\n")
 	},
 }
 

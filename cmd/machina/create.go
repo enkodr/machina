@@ -1,10 +1,10 @@
 package machina
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/enkodr/machina/internal/vm"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -15,57 +15,66 @@ var createCommand = &cobra.Command{
 	Aliases: []string{"new"},
 	Run: func(cmd *cobra.Command, args []string) {
 		name = "default"
-		if len(args) == 1 {
-			name = args[0]
-		}
 
-		if file != "" {
+		// Check the passed parameters
+		switch {
+		// Get the template name to load from the first argument,
+		// if passed
+		case len(args) == 1:
+			name = args[0]
+		// Get the filename from the file parameter
+		case file != "":
 			name = file
 		}
-		// create a new MachinaVM instance
-		log.Info("Creating necessary files")
+
+		// Create a new MachinaVM struct and the necessary files
+		fmt.Printf("Creating necessary files\n")
 		vm, err := vm.NewVM(name)
 		if err != nil {
-			log.Error("error creating files")
+			fmt.Fprintf(os.Stderr, "Error creating files\n")
 			os.Exit(1)
 		}
 
-		// download the distro image used for the machine
-		log.Info("Downloading image")
+		// Download the distro image used for the machine
+		fmt.Printf("Downloading image\n")
 		err = vm.DownloadImage()
 		if err != nil {
-			log.Error("error downoading image")
+			fmt.Fprintf(os.Stderr, "Error downoading image\n")
 			os.Exit(1)
 		}
 
-		// create boot and seed disks
-		log.Info("Create boot and seed disks")
+		// Create boot and seed disks necessary for the machine to boot
+		fmt.Printf("Create boot and seed disks\n")
 		err = vm.CreateDisks()
 		if err != nil {
-			log.Error("error creating boot and seed disks")
+			fmt.Fprintf(os.Stderr, "Error creating boot and seed disks\n")
 			os.Exit(1)
 		}
 
-		// create the VM
-		log.Info("Create and start the VM")
+		// Create and start the VM
+		fmt.Printf("Create and start the VM\n")
 		err = vm.Create()
 		if err != nil {
-			log.Error("error creating machine")
+			fmt.Fprintf(os.Stderr, "Error creating machine\n")
 			os.Exit(1)
 		}
 
-		// wait until the VM reaches running state
-		log.Info("Waiting for the machine to become ready")
-		vm.Wait()
+		// Wait until the VM reaches running state
+		fmt.Printf("Waiting for the machine to become ready\n")
+		err = vm.Wait()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "The machine appears to be stuck in a starting state\n")
+		}
 
 		// run installation scripts
-		log.Info("Running install scripts")
+		fmt.Printf("Running install scripts\n")
 		err = vm.RunInitScripts()
 		if err != nil {
-			log.Error("error running install scripts")
+			fmt.Fprintf(os.Stderr, "Error running install scripts\n")
 			os.Exit(1)
 		}
 
+		fmt.Printf("Done!\n")
 	},
 }
 

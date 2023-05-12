@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/enkodr/machina/internal/vm"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -30,17 +29,19 @@ var deleteCommand = &cobra.Command{
 		// Load the machine data
 		vm, err := vm.Load(name)
 		if err != nil {
-			log.Errorf("the machine %q doesn't exist", name)
+			fmt.Fprintf(os.Stderr, "the machine %q doesn't exist\n", name)
 			return
 		}
 
 		// Confirm if the machine will be deleted
 		if !forceDelete {
+			// Ask the user for delete confirmation
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Printf("Are you certain you want to delete machine '%s' [y/N]: ", name)
 			response, err := reader.ReadString('\n')
 			if err != nil {
-				log.Fatal(err)
+				fmt.Fprintf(os.Stderr, err.Error())
+				os.Exit(1)
 			}
 
 			response = strings.ToLower(strings.TrimSpace(response))
@@ -52,13 +53,14 @@ var deleteCommand = &cobra.Command{
 		}
 		if forceDelete {
 			// Delete the machine
-			log.Info(fmt.Sprintf("Deleting machine '%s'", name))
+			fmt.Printf("Deleting machine '%s'\n", name)
 			err = vm.Delete()
 			if err != nil {
-				log.Error("Error deleting the machine")
+				fmt.Fprintf(os.Stderr, "Error deleting the machine\n")
 			}
 		}
 
+		fmt.Printf("Done!\n")
 	},
 }
 

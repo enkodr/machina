@@ -253,12 +253,20 @@ func (vm *VMConfig) Create() error {
 }
 
 // Wait until the machine is running
-func (vm *VMConfig) Wait() {
+func (vm *VMConfig) Wait() error {
+	start := time.Now()
 	running := false
 	for !running {
 		running = sshutil.IsResponding(vm.Network.IPAddress)
 		time.Sleep(time.Second)
+		// Return a timeout error in case the machine takes more than
+		// 5 minutes to become responsive
+		if time.Since(start) >= time.Second*300 {
+			return errors.New("timeout")
+		}
 	}
+
+	return nil
 }
 
 // Starts a stopped vm

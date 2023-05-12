@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/enkodr/machina/internal/vm"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -20,10 +19,11 @@ var copyCommand = &cobra.Command{
 		if len(args) > 0 {
 			name = args[0]
 		}
-		if len(args) < 2 {
-			log.Error("Error!\n")
-			log.Info("\tmachina copy <host_path> <machine_name>:<machine_path>\n")
-			log.Info("\tmachina copy <machine_name>:<machine_path> <host_path>\n")
+
+		// Check if all required arguments are passed
+		if len(args) != 2 {
+			fmt.Printf("machina copy <host_path> <machine_name>:<machine_path>\n")
+			fmt.Printf("machina copy <machine_name>:<machine_path> <host_path>\n")
 			os.Exit(0)
 		}
 
@@ -32,6 +32,9 @@ var copyCommand = &cobra.Command{
 		hostToVM := true
 		origin := args[0]
 		dest := args[1]
+
+		// Identify the copy direction based on the existence
+		// on the existence of a colon
 		if strings.Contains(origin, ":") {
 			name = strings.Split(origin, ":")[0]
 			hostToVM = false
@@ -42,11 +45,11 @@ var copyCommand = &cobra.Command{
 		// Get the machine from the configuration file
 		machine, err := vm.Load(name)
 		if err != nil {
-			log.Errorf("the machine %q doesn't exist", name)
-			os.Exit(0)
+			fmt.Fprintf(os.Stderr, "Machine %q does not exist\n", name)
+			os.Exit(1)
 		}
 
-		// Defiine the origin and destination
+		// Define the origin and destination for copying content
 		if hostToVM {
 			parts := strings.Split(dest, ":")
 			dest = fmt.Sprintf("%s@%s:%s", machine.Credentials.Username, machine.Network.IPAddress, parts[1])
@@ -55,15 +58,15 @@ var copyCommand = &cobra.Command{
 			origin = fmt.Sprintf("%s@%s:%s", machine.Credentials.Username, machine.Network.IPAddress, parts[1])
 		}
 
-		// Copy the content
-		log.Info("Copying content...")
+		// Copy the content from origin to destination
+		fmt.Printf("Copying content...\n")
 		err = machine.CopyContent(origin, dest)
 		if err != nil {
-			log.Error("Error copying content")
+			fmt.Fprintf(os.Stderr, "Error copying content\n")
 			os.Exit(1)
 		}
 
-		log.Info("Done!\n")
+		fmt.Printf("Done!\n")
 
 	},
 }

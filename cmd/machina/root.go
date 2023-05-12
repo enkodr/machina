@@ -18,6 +18,7 @@ func Execute() {
 	rootCommand.Execute()
 }
 
+// Validate machine name and define the default name
 func validateName(cmd *cobra.Command, args []string) error {
 	name = "default"
 	if len(args) > 0 {
