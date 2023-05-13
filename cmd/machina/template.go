@@ -19,12 +19,12 @@ var templateCommand = &cobra.Command{
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load the machine data
-		var tplName string
 
-		if tplName != "" {
-			tpl, err := vm.GetTemplate(tplName)
+		// Check if a template name was passed
+		if len(args) == 1 {
+			tpl, err := vm.GetTemplate(args[0])
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get template %s\n", tplName)
+				fmt.Fprintf(os.Stderr, "Failed to get template %s\n", args[0])
 				os.Exit(1)
 			}
 			fmt.Println(tpl)
