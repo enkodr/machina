@@ -8,6 +8,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	newName string
+	newCPUs string
+	newMem  string
+	newDisk string
+)
+
 // Creates a new VM
 var createCommand = &cobra.Command{
 	Use:     "create",
@@ -27,9 +34,34 @@ var createCommand = &cobra.Command{
 			name = file
 		}
 
-		// Create a new MachinaVM struct and the necessary files
-		fmt.Printf("Creating necessary files\n")
+		// Create a new VM
+		fmt.Printf("Creating machine\n")
 		vm, err := vm.NewVM(name)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating machine\n")
+			os.Exit(1)
+		}
+
+		// Check if name was passed by flag
+		if newName != "" {
+			vm.Name = newName
+		}
+		// Check if cpus was passed by flag
+		if newCPUs != "" {
+			vm.Specs.CPUs = newCPUs
+		}
+		// Check if memory was passed by flag
+		if newMem != "" {
+			vm.Specs.Memory = newMem
+		}
+		// Check if disk was passed by flag
+		if newDisk != "" {
+			vm.Specs.Disk = newDisk
+		}
+
+		// Prepare necessary files for machine creation
+		fmt.Printf("Creating necessary files\n")
+		err = vm.Prepare()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating files\n")
 			os.Exit(1)
@@ -80,5 +112,9 @@ var createCommand = &cobra.Command{
 
 func init() {
 	createCommand.PersistentFlags().StringVarP(&file, "file", "f", "", "path to the file to use to create the machine")
+	createCommand.PersistentFlags().StringVarP(&newName, "name", "n", "", "specify the name of the machine")
+	createCommand.PersistentFlags().StringVarP(&newCPUs, "cpus", "c", "", "specify the amount of CPUs of the machine (e.g. 2)")
+	createCommand.PersistentFlags().StringVarP(&newMem, "mem", "m", "", "specify the amount of memory of the machine (e.g 4G)")
+	createCommand.PersistentFlags().StringVarP(&newDisk, "disk", "d", "", "specify the size of the disk of the machine (e.g. 100G)")
 	rootCommand.AddCommand(createCommand)
 }

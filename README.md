@@ -35,6 +35,15 @@ and delete virtual machines.
 machina create ubuntu
 ```
 
+By default the machine will use the the values defined on the template.
+You can specify the values inline by using the following flags on the `create`
+command:
+
+* **`-n` or `--name`**: Define the name of the machine
+* **`-c` or `--cpus`**: Define the number of CPUs for the machine
+* **`-m` or `--memory`**: Define the number of memory for the machine
+* **`-d` or `--disk`**: Define the size of the disk on the machine
+
 **Creating a new virtual machine from an existing file:**
 
 ```bash
