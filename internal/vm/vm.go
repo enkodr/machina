@@ -90,13 +90,17 @@ func NewVM(name string) (*VMConfig, error) {
 		return nil, err
 	}
 
+	return vm, nil
+}
+
+func (vm *VMConfig) Prepare() error {
 	// Load configuration
 	cfg := config.LoadConfig()
 
 	// Check if VM already exists
-	_, err = os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name))
+	_, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name))
 	if !os.IsNotExist(err) {
-		return nil, errors.New("machine already exists")
+		return errors.New("machine already exists")
 	}
 
 	if cfg.Hypervisor == "qemu" {
@@ -112,11 +116,11 @@ func NewVM(name string) (*VMConfig, error) {
 	net := netutil.NewNetwork()
 	netYaml, err := yaml.Marshal(net)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "network.cfg"), netYaml, 0644)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	vm.Network = Network{
 		NicName:    net.Ethernets.VirtNet.Name,
@@ -134,22 +138,22 @@ func NewVM(name string) (*VMConfig, error) {
 	}
 	usr, err := usrutil.NewUserData(&clCfg)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	usrYaml, err := yaml.Marshal(usr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	usrYaml = append([]byte("#cloud-config\n"), usrYaml...)
 	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "userdata.yaml"), usrYaml, 0644)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Save private key
 	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"), clCfg.PrivateKey, 0600)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Create script files
@@ -158,15 +162,15 @@ func NewVM(name string) (*VMConfig, error) {
 	// Save machine file
 	vmYaml, err := yaml.Marshal(vm)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "machina.yaml"), vmYaml, 0644)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return vm, nil
+	return nil
 
 }
 
