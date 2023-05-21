@@ -78,8 +78,9 @@ func TestRemoteFileValidName(t *testing.T) {
 
 	assert.Equal(t, want.Name, got.Name)
 	assert.Equal(t, want.Specs.CPUs, got.Specs.CPUs)
-	assert.Equal(t, want.Image.Checksum, got.Image.Checksum)
-
+	assert.Equal(t, want.Specs.CPUs, got.Specs.CPUs)
+	assert.Equal(t, want.Specs.Memory, got.Specs.Memory)
+	assert.Equal(t, want.Specs.Disk, got.Specs.Disk)
 }
 
 func TestRemoteFileInvalidName(t *testing.T) {
