@@ -3,6 +3,7 @@ package machina
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/enkodr/machina/internal/vm"
 	"github.com/spf13/cobra"
@@ -52,11 +53,11 @@ var createCommand = &cobra.Command{
 		}
 		// Check if memory was passed by flag
 		if newMem != "" {
-			vm.Specs.Memory = newMem
+			vm.Specs.Memory = strings.ToUpper(newMem)
 		}
 		// Check if disk was passed by flag
 		if newDisk != "" {
-			vm.Specs.Disk = newDisk
+			vm.Specs.Disk = strings.ToUpper(newDisk)
 		}
 
 		// Prepare necessary files for machine creation

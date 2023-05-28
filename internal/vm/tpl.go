@@ -15,26 +15,26 @@ import (
 
 var endpoint = "https://raw.githubusercontent.com/enkodr/machina/main/templates"
 
-type Filer interface {
+type Templater interface {
 	Load() (*VMConfig, error)
 }
 
-type LocalFile struct {
+type LocalTemplate struct {
 	path string
 }
-type RemoteFile struct {
+type RemoteTemplate struct {
 	name string
 }
 
-func NewTemplate(name string) Filer {
+func NewTemplate(name string) Templater {
 	if strings.Contains(name, ".yaml") {
-		return &LocalFile{path: name}
+		return &LocalTemplate{path: name}
 	} else {
-		return &RemoteFile{name: name}
+		return &RemoteTemplate{name: name}
 	}
 }
 
-func (f *LocalFile) Load() (*VMConfig, error) {
+func (f *LocalTemplate) Load() (*VMConfig, error) {
 	// Get the template content
 	tpl, err := os.ReadFile(f.path)
 
@@ -50,7 +50,7 @@ func (f *LocalFile) Load() (*VMConfig, error) {
 	return vm, nil
 }
 
-func (f *RemoteFile) Load() (*VMConfig, error) {
+func (f *RemoteTemplate) Load() (*VMConfig, error) {
 	// Get the template content
 	tplFile := fmt.Sprintf("%s/%s.yaml", endpoint, f.name)
 	tpl, err := netutil.Download(tplFile)
@@ -97,6 +97,8 @@ func parseTemplate(tpl []byte) (*VMConfig, error) {
 		base.Mount = Mount{}
 		mergo.Merge(vm, base)
 	}
+	vm.Specs.Disk = strings.ToUpper(vm.Specs.Disk)
+	vm.Specs.Memory = strings.ToUpper(vm.Specs.Memory)
 
 	return vm, nil
 }

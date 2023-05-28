@@ -12,12 +12,12 @@ import (
 func TestNewTemplate(t *testing.T) {
 	testCases := []struct {
 		name     string
-		wantType Filer
+		wantType Templater
 	}{
-		{"local.yaml", &LocalFile{}},
-		{"default", &RemoteFile{}},
-		{"ubuntu.yaml", &LocalFile{}},
-		{"ubuntu", &RemoteFile{}},
+		{"local.yaml", &LocalTemplate{}},
+		{"default", &RemoteTemplate{}},
+		{"ubuntu.yaml", &LocalTemplate{}},
+		{"ubuntu", &RemoteTemplate{}},
 	}
 
 	for _, tc := range testCases {
@@ -45,7 +45,7 @@ specs:
 	defer f.Close()
 	defer os.Remove(f.Name())
 	f.Write(want)
-	localFile := &LocalFile{path: f.Name()}
+	localFile := &LocalTemplate{path: f.Name()}
 	got, _ := localFile.Load()
 	assert.Equal(t, got.Name, "TestVM")
 	assert.Equal(t, got.Specs.CPUs, "2")
@@ -58,7 +58,7 @@ func TestLocalFileLoadInvalidData(t *testing.T) {
 	name := "template.yaml"
 	f, _ := os.CreateTemp("", name)
 	f.Write([]byte(want))
-	localFile := &LocalFile{path: f.Name()}
+	localFile := &LocalTemplate{path: f.Name()}
 	vm, err := localFile.Load()
 	assert.Error(t, err)
 	assert.Nil(t, vm)
@@ -73,7 +73,7 @@ func TestRemoteFileValidName(t *testing.T) {
 	err := yaml.Unmarshal(data, want)
 	assert.NoError(t, err)
 
-	remoteFile := &RemoteFile{name: name}
+	remoteFile := &RemoteTemplate{name: name}
 	got, _ := remoteFile.Load()
 
 	assert.Equal(t, want.Name, got.Name)
@@ -86,7 +86,7 @@ func TestRemoteFileValidName(t *testing.T) {
 func TestRemoteFileInvalidName(t *testing.T) {
 	name := "invalid"
 
-	remoteFile := &RemoteFile{name: name}
+	remoteFile := &RemoteTemplate{name: name}
 	vm, err := remoteFile.Load()
 
 	assert.Error(t, err)
