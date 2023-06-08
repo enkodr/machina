@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/alexeyco/simpletable"
-	"github.com/enkodr/machina/internal/vm"
+	"github.com/enkodr/machina/internal/hypvsr"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +22,7 @@ var templateCommand = &cobra.Command{
 
 		// Check if a template name was passed
 		if len(args) == 1 {
-			tpl, err := vm.GetTemplate(args[0])
+			tpl, err := hypvsr.GetTemplate(args[0])
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get template %s\n", args[0])
 				os.Exit(1)
@@ -36,7 +36,7 @@ var templateCommand = &cobra.Command{
 					{Align: simpletable.AlignCenter, Text: "TEMPLATE NAME"},
 				},
 			}
-			tpls := vm.GetTemplateList()
+			tpls := hypvsr.GetTemplateList()
 
 			for _, tpl := range tpls {
 				r := []*simpletable.Cell{

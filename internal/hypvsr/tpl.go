@@ -1,13 +1,16 @@
-package vm
+package hypvsr
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/enkodr/machina/internal/config"
 	"github.com/enkodr/machina/internal/netutil"
 	"github.com/imdario/mergo"
 	"gopkg.in/yaml.v3"
@@ -16,7 +19,7 @@ import (
 var endpoint = "https://raw.githubusercontent.com/enkodr/machina/main/templates"
 
 type Templater interface {
-	Load() (*VMConfig, error)
+	Load() (KindManager, error)
 }
 
 type LocalTemplate struct {
@@ -26,15 +29,19 @@ type RemoteTemplate struct {
 	name string
 }
 
+type kind struct {
+	Kind string `yaml:"kind"`
+}
+
 func NewTemplate(name string) Templater {
-	if strings.Contains(name, ".yaml") {
-		return &LocalTemplate{path: name}
-	} else {
+	if _, err := os.Stat(name); os.IsNotExist(err) {
 		return &RemoteTemplate{name: name}
+	} else {
+		return &LocalTemplate{path: name}
 	}
 }
 
-func (f *LocalTemplate) Load() (*VMConfig, error) {
+func (f *LocalTemplate) Load() (KindManager, error) {
 	// Get the template content
 	tpl, err := os.ReadFile(f.path)
 
@@ -50,7 +57,7 @@ func (f *LocalTemplate) Load() (*VMConfig, error) {
 	return vm, nil
 }
 
-func (f *RemoteTemplate) Load() (*VMConfig, error) {
+func (f *RemoteTemplate) Load() (KindManager, error) {
 	// Get the template content
 	tplFile := fmt.Sprintf("%s/%s.yaml", endpoint, f.name)
 	tpl, err := netutil.Download(tplFile)
@@ -67,9 +74,74 @@ func (f *RemoteTemplate) Load() (*VMConfig, error) {
 	return vm, nil
 }
 
+// Load loads the YAML file content into the struct
+func Load(name string) (KindManager, error) {
+	// Loads the configuration
+	cfg := config.LoadConfig()
+
+	// Reads the YAML file
+	data, err := os.ReadFile(filepath.Join(cfg.Directories.Instances, name, "machina.yaml"))
+	// Loads the YAML to identify the km
+	var k kind
+	err = yaml.Unmarshal(data, &k)
+	if err != nil {
+		return nil, err
+	}
+
+	var km KindManager
+	switch k.Kind {
+	case "Machine":
+		km = &Machine{}
+		// Unmarshal the Machine
+		err = yaml.Unmarshal(data, km)
+		if err != nil {
+			return nil, err
+		}
+		break
+	case "Cluster":
+		km = &Cluster{}
+		// Unmarshal the Machine
+		err = yaml.Unmarshal(data, km)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.New("unknown kind")
+	}
+
+	return km, nil
+}
+
 // parse the template from yaml to struct
-func parseTemplate(tpl []byte) (*VMConfig, error) {
-	vm := &VMConfig{}
+func parseTemplate(tpl []byte) (KindManager, error) {
+	// Identify the kind
+	k := &kind{}
+	yaml.Unmarshal(tpl, k)
+
+	var km KindManager
+	var err error
+	switch k.Kind {
+	case "Machine":
+		km, err = parseMachineTemplate(tpl)
+		if err != nil {
+			return nil, err
+		}
+		break
+	case "Cluster":
+		km, err = parseClusterTemplate(tpl)
+		if err != nil {
+			return nil, err
+		}
+		break
+	default:
+		return nil, errors.New("unknown kind")
+	}
+
+	return km, nil
+}
+
+func parseMachineTemplate(tpl []byte) (*Machine, error) {
+	vm := &Machine{}
 
 	err := yaml.Unmarshal(tpl, vm)
 	if err != nil {
@@ -87,7 +159,7 @@ func parseTemplate(tpl []byte) (*VMConfig, error) {
 			return nil, err
 		}
 
-		base := &VMConfig{}
+		base := &Machine{}
 		err = yaml.Unmarshal(baseTpl, base)
 		if err != nil {
 			return nil, err
@@ -97,10 +169,17 @@ func parseTemplate(tpl []byte) (*VMConfig, error) {
 		base.Mount = Mount{}
 		mergo.Merge(vm, base)
 	}
-	vm.Specs.Disk = strings.ToUpper(vm.Specs.Disk)
-	vm.Specs.Memory = strings.ToUpper(vm.Specs.Memory)
+	vm.Resources.Disk = strings.ToUpper(vm.Resources.Disk)
+	vm.Resources.Memory = strings.ToUpper(vm.Resources.Memory)
 
 	return vm, nil
+}
+
+func parseClusterTemplate(tpl []byte) (*Cluster, error) {
+	c := &Cluster{}
+
+	return c, nil
+
 }
 
 // GetTemplateList gets the list of available templates

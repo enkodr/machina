@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/enkodr/machina/internal/vm"
+	"github.com/enkodr/machina/internal/hypvsr"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +18,7 @@ var shellCommand = &cobra.Command{
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load the machine data
-		machine, err := vm.Load(name)
+		machine, err := hypvsr.Load(name)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Machine %q does not exist\n", name)
 			os.Exit(1)

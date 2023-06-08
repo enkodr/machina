@@ -1,3 +1,9 @@
+# The kind Machine is the type to create isolated virtual machines
+kind: Machine
+
+# The kind Machine is the type to create isolated virtual machines
+kind: Machine
+
 # The name to use for the machine.
 # This needs to be a unique name in the system.
 name: ubuntu
@@ -22,7 +28,7 @@ credentials:
   - "admin"
   
 # This option specifies the hardware you want to set for the machine
-specs:
+resources:
   # Sets the number of cores to set for the machine
   cpus: 2
   # Sets the ammount of RAM to set for the machine. You must use the 

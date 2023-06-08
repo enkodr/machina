@@ -1,3 +1,6 @@
+# The kind Machine is the type to create isolated virtual machines
+kind: Machine
+
 name: k3s
 
 extends: ubuntu

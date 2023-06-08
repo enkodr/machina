@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/enkodr/machina/internal/vm"
+	"github.com/enkodr/machina/internal/hypvsr"
 	"github.com/spf13/cobra"
 )
 
@@ -27,7 +27,7 @@ var deleteCommand = &cobra.Command{
 			name = args[0]
 		}
 		// Load the machine data
-		vm, err := vm.Load(name)
+		vm, err := hypvsr.Load(name)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "the machine %q doesn't exist\n", name)
 			return

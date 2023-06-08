@@ -3,9 +3,8 @@ package machina
 import (
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/enkodr/machina/internal/vm"
+	"github.com/enkodr/machina/internal/hypvsr"
 	"github.com/spf13/cobra"
 )
 
@@ -37,27 +36,10 @@ var createCommand = &cobra.Command{
 
 		// Create a new VM
 		fmt.Printf("Creating machine\n")
-		vm, err := vm.NewVM(name)
+		vm, err := hypvsr.NewMachine(name)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating machine\n")
 			os.Exit(1)
-		}
-
-		// Check if name was passed by flag
-		if newName != "" {
-			vm.Name = newName
-		}
-		// Check if cpus was passed by flag
-		if newCPUs != "" {
-			vm.Specs.CPUs = newCPUs
-		}
-		// Check if memory was passed by flag
-		if newMem != "" {
-			vm.Specs.Memory = strings.ToUpper(newMem)
-		}
-		// Check if disk was passed by flag
-		if newDisk != "" {
-			vm.Specs.Disk = strings.ToUpper(newDisk)
 		}
 
 		// Prepare necessary files for machine creation

@@ -1,3 +1,6 @@
+# The kind Machine is the type to create isolated virtual machines
+kind: Machine
+
 # The name to use for the machine.
 # This needs to be a unique name in the system.
 name: rockylinux

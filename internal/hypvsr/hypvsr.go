@@ -1,4 +1,4 @@
-package vm
+package hypvsr
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/enkodr/machina/internal/config"
@@ -18,82 +19,92 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// VMConfig represents a machina virtual machine
-type VMConfig struct {
-	Hypervisor  Hypervisor  `yaml:"-"`
-	Extends     string      `yaml:"extends,omitempty"`
-	Name        string      `yaml:"name,omitempty"`
-	Image       Image       `yaml:"image,omitempty"`
-	Credentials Credentials `yaml:"credentials,omitempty"`
-	Specs       Specs       `yaml:"specs,omitempty"`
-	Scripts     Scripts     `yaml:"scripts,omitempty"`
-	Mount       Mount       `yaml:"mount,omitempty"`
-	Network     Network     `yaml:"network,omitempty"`
-	Connection  string      `yaml:"connection,omitempty"`
-	Variant     string      `yaml:"variant,omitempty"`
+type KindManager interface {
+	Create() error
+	Start() error
+	Stop() error
+	ForceStop() error
+	Status() (string, error)
+	Delete() error
+	CopyContent(string, string) error
+	Prepare() error
+	DownloadImage() error
+	CreateDisks() error
+	Wait() error
+	Shell() error
+	RunInitScripts() error
+	GetVMs() []Machine
 }
 
-// Image represents the distro image to use
+// Machine holds the configuration details for a single machine
+type Machine struct {
+	Kind        string      `yaml:"kind"`                  // Kind of the resource, should be 'Machine'
+	Name        string      `yaml:"name,omitempty"`        // Name of the machine. Must be unique in the system
+	Extends     string      `yaml:"extends,omitempty"`     // Name of the Machine to extend
+	Replicas    int         `yaml:"replicas,omitempty"`    // Number of Replicas (used with kind Cluster)
+	Image       Image       `yaml:"image,omitempty"`       // Image details for the machine
+	Credentials Credentials `yaml:"credentials,omitempty"` // Credentials for the machine
+	Resources   Resources   `yaml:"resources,omitempty"`   // Hardware resources for the machine
+	Scripts     Scripts     `yaml:"scripts,omitempty"`     // Scripts to run in the machine
+	Mount       Mount       `yaml:"mount,omitempty"`       // Mount point details
+	Network     Network     `yaml:"network,omitempty"`     // Network configuration
+	Connection  string      `yaml:"connection,omitempty"`  // Connection to hypervisor
+	Variant     string      `yaml:"variant,omitempty"`     // OS variant to use
+}
+
+// Image holds the URL and checksum of the machine image
 type Image struct {
-	URL      string `yaml:"url,omitempty"`
-	Checksum string `yaml:"checksum,omitempty"`
+	URL      string `yaml:"url,omitempty"`      // URL of the machine image
+	Checksum string `yaml:"checksum,omitempty"` // Checksum for the image in the format 'algorithm:hash'
 }
 
-// Credentials represents the credentials for the machine user
+// Credentials holds the username, password, and user groups
 type Credentials struct {
-	Username string   `yaml:"username,omitempty"`
-	Password string   `yaml:"password,omitempty"`
-	Groups   []string `yaml:"groups,omitempty"`
+	Username string   `yaml:"username,omitempty"` // Username for the machine
+	Password string   `yaml:"password,omitempty"` // Password for the machine
+	Groups   []string `yaml:"groups,omitempty"`   // User groups for the machine
 }
 
-// Specs represents the hardware specifications
-type Specs struct {
-	CPUs   string `yaml:"cpus,omitempty"`
-	Memory string `yaml:"memory,omitempty"`
-	Disk   string `yaml:"disk,omitempty"`
+// Resources holds the hardware specifications of the machine
+type Resources struct {
+	CPUs   string `yaml:"cpus,omitempty"`   // Number of CPUs for the machine
+	Memory string `yaml:"memory,omitempty"` // Amount of RAM for the machine
+	Disk   string `yaml:"disk,omitempty"`   // Disk space for the machine
 }
 
-// Scripts represents the scripts to run in the machine
+// Scripts holds the installation and initialisation scripts
 type Scripts struct {
-	Install string `yaml:"install,omitempty"`
-	Init    string `yaml:"init,omitempty"`
+	Install string `yaml:"install,omitempty"` // Installation script to run in the machine
+	Init    string `yaml:"init,omitempty"`    // Initialisation script to run when machine starts
 }
 
-// Mount represents the mount points from the to the machine
+// Mount holds the hostPath and guestPath for mounting host folders into the VM
 type Mount struct {
-	Name      string `yaml:"name,omitempty"`
-	HostPath  string `yaml:"hostPath,omitempty"`
-	GuestPath string `yaml:"guestPath,omitempty"`
+	Name      string `yaml:"name,omitempty"`      // Name of the mount point
+	HostPath  string `yaml:"hostPath,omitempty"`  // Path in the host
+	GuestPath string `yaml:"guestPath,omitempty"` // Path inside the VM
 }
 
-// Network represents the network configuration
+// Network holds the network configuration
 type Network struct {
-	NicName    string `yaml:"nicName,omitempty"`
-	IPAddress  string `yaml:"ipAddress,omitempty"`
-	Gateway    string `yaml:"gateway,omitempty"`
-	MacAddress string `yaml:"macAddress,omitempty"`
+	NicName    string `yaml:"nicName,omitempty"`    // Name of the interface
+	IPAddress  string `yaml:"ipAddress,omitempty"`  // IP Address of the machine
+	Gateway    string `yaml:"gateway,omitempty"`    // Gateway of the network
+	MacAddress string `yaml:"macAddress,omitempty"` // MacAddress of the NIC
 }
 
-type Hypervisor interface {
-	Create(vm *VMConfig) error
-	Start(vm *VMConfig) error
-	Stop(vm *VMConfig) error
-	ForceStop(vm *VMConfig) error
-	Status(vm *VMConfig) (string, error)
-	Delete(vm *VMConfig) error
-}
-
-func NewVM(name string) (*VMConfig, error) {
+// NewMachine creates a new machine
+func NewMachine(name string) (KindManager, error) {
 	tpl := NewTemplate(name)
-	vm, err := tpl.Load()
+	kind, err := tpl.Load()
 	if err != nil {
 		return nil, err
 	}
 
-	return vm, nil
+	return kind, nil
 }
 
-func (vm *VMConfig) Prepare() error {
+func (vm *Machine) Prepare() error {
 	// Load configuration
 	cfg := config.LoadConfig()
 
@@ -101,12 +112,6 @@ func (vm *VMConfig) Prepare() error {
 	_, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name))
 	if !os.IsNotExist(err) {
 		return errors.New("machine already exists")
-	}
-
-	if cfg.Hypervisor == "qemu" {
-		vm.Hypervisor = &Qemu{}
-	} else {
-		vm.Hypervisor = &Libvirt{}
 	}
 
 	// Create directory structure
@@ -174,27 +179,7 @@ func (vm *VMConfig) Prepare() error {
 
 }
 
-func Load(name string) (*VMConfig, error) {
-	cfg := config.LoadConfig()
-	vm := &VMConfig{}
-
-	data, err := os.ReadFile(filepath.Join(cfg.Directories.Instances, name, "machina.yaml"))
-	if err != nil {
-		return nil, err
-	}
-	err = yaml.Unmarshal(data, vm)
-	if err != nil {
-		return nil, err
-	}
-	if cfg.Hypervisor == "qemu" {
-		vm.Hypervisor = &Qemu{}
-	} else {
-		vm.Hypervisor = &Libvirt{}
-	}
-	return vm, nil
-}
-
-func (vm *VMConfig) DownloadImage() error {
+func (vm *Machine) DownloadImage() error {
 	cfg := config.LoadConfig()
 	imgDir := cfg.Directories.Images
 	fileName, err := imgutil.GetFilenameFromURL(vm.Image.URL)
@@ -217,7 +202,7 @@ func (vm *VMConfig) DownloadImage() error {
 	return nil
 }
 
-func (vm *VMConfig) CreateDisks() error {
+func (vm *Machine) CreateDisks() error {
 	// Create main disk
 	image, _ := imgutil.GetFilenameFromURL(vm.Image.URL)
 	cfg := config.LoadConfig()
@@ -227,7 +212,7 @@ func (vm *VMConfig) CreateDisks() error {
 		"-F", "qcow2",
 		"-b", filepath.Join(cfg.Directories.Images, image),
 		"-f", "qcow2", filepath.Join(cfg.Directories.Instances, vm.Name, "disk.img"),
-		vm.Specs.Disk,
+		vm.Resources.Disk,
 	}
 	cmd := exec.Command(command, args...)
 	err := cmd.Run()
@@ -252,12 +237,22 @@ func (vm *VMConfig) CreateDisks() error {
 }
 
 // Create creates the VM and starts it
-func (vm *VMConfig) Create() error {
-	return vm.Hypervisor.Create(vm)
+func (vm *Machine) Create() error {
+	// Load configuration
+	cfg := config.LoadConfig()
+
+	// Define the Hypervisor to use
+	var h Hypervisor
+	if cfg.Hypervisor == "qemu" {
+		h = &Qemu{}
+	} else {
+		h = &Libvirt{}
+	}
+	return h.Create(vm)
 }
 
 // Wait until the machine is running
-func (vm *VMConfig) Wait() error {
+func (vm *Machine) Wait() error {
 	start := time.Now()
 	running := false
 	for !running {
@@ -274,33 +269,92 @@ func (vm *VMConfig) Wait() error {
 }
 
 // Starts a stopped vm
-func (vm *VMConfig) Start() error {
-	return vm.Hypervisor.Start(vm)
+func (vm *Machine) Start() error {
+	// Load configuration
+	cfg := config.LoadConfig()
+
+	// Define the Hypervisor to use
+	var h Hypervisor
+	if cfg.Hypervisor == "qemu" {
+		h = &Qemu{}
+	} else {
+		h = &Libvirt{}
+	}
+	return h.Start(vm)
 }
 
 // Stops a running VM
-func (vm *VMConfig) Stop() error {
-	return vm.Hypervisor.Stop(vm)
+func (vm *Machine) Stop() error {
+	// Load configuration
+	cfg := config.LoadConfig()
+
+	// Define the Hypervisor to use
+	var h Hypervisor
+	if cfg.Hypervisor == "qemu" {
+		h = &Qemu{}
+	} else {
+		h = &Libvirt{}
+	}
+	return h.Stop(vm)
 }
 
 // Force stops a running VM
-func (vm *VMConfig) ForceStop() error {
-	return vm.Hypervisor.ForceStop(vm)
+func (vm *Machine) ForceStop() error {
+	// Load configuration
+	cfg := config.LoadConfig()
+
+	// Define the Hypervisor to use
+	var h Hypervisor
+	if cfg.Hypervisor == "qemu" {
+		h = &Qemu{}
+	} else {
+		h = &Libvirt{}
+	}
+	return h.ForceStop(vm)
 }
 
 // Gets the status of a VM
-func (vm *VMConfig) Status() (string, error) {
-	return vm.Hypervisor.Status(vm)
+func (vm *Machine) Status() (string, error) {
+	// Load configuration
+	cfg := config.LoadConfig()
+
+	// Define the Hypervisor to use
+	var h Hypervisor
+	if cfg.Hypervisor == "qemu" {
+		h = &Qemu{}
+	} else {
+		h = &Libvirt{}
+	}
+	return h.Status(vm)
 }
 
 // Deletes a VM
-func (vm *VMConfig) Delete() error {
-	return vm.Hypervisor.Delete(vm)
+func (vm *Machine) Delete() error {
+	// Load configuration
+	cfg := config.LoadConfig()
+
+	// Define the Hypervisor to use
+	var h Hypervisor
+	if cfg.Hypervisor == "qemu" {
+		h = &Qemu{}
+	} else {
+		h = &Libvirt{}
+	}
+	return h.Delete(vm)
 }
 
 // Copies content from host to guest or vice-versa
-func (vm *VMConfig) CopyContent(origin string, dest string) error {
+func (vm *Machine) CopyContent(origin string, dest string) error {
 	cfg := config.LoadConfig()
+	// Define the origin and destination for copying content
+	hostToVM := true
+	if hostToVM {
+		parts := strings.Split(dest, ":")
+		dest = fmt.Sprintf("%s@%s:%s", vm.Credentials.Username, vm.Network.IPAddress, parts[1])
+	} else {
+		parts := strings.Split(origin, ":")
+		origin = fmt.Sprintf("%s@%s:%s", vm.Credentials.Username, vm.Network.IPAddress, parts[1])
+	}
 	command := "scp"
 	args := []string{
 		"-r",
@@ -320,7 +374,7 @@ func (vm *VMConfig) CopyContent(origin string, dest string) error {
 }
 
 // Creates the script files from the template
-func (vm *VMConfig) createScriptFiles() error {
+func (vm *Machine) createScriptFiles() error {
 	// Prepare
 	cfg := config.LoadConfig()
 	err := os.MkdirAll(filepath.Join(cfg.Directories.Instances, vm.Name, "bin"), 0755)
@@ -398,7 +452,7 @@ exit 0
 }
 
 // Runs the initial scripts after the machine is created
-func (vm *VMConfig) RunInitScripts() error {
+func (vm *Machine) RunInitScripts() error {
 	cfg := config.LoadConfig()
 
 	// Copies the scripts
@@ -435,7 +489,7 @@ func (vm *VMConfig) RunInitScripts() error {
 	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, vm.Name, "bin"))
 }
 
-func (vm *VMConfig) Shell() error {
+func (vm *Machine) Shell() error {
 	cfg := config.LoadConfig()
 
 	// Copies the init script into the VM
@@ -455,6 +509,10 @@ func (vm *VMConfig) Shell() error {
 	}
 
 	return nil
+}
+
+func (vm *Machine) GetVMs() []Machine {
+	return []Machine{*vm}
 }
 
 func convertMemory(memory string) (string, error) {

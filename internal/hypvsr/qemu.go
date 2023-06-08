@@ -1,4 +1,4 @@
-package vm
+package hypvsr
 
 import (
 	"fmt"
@@ -6,26 +6,25 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/enkodr/machina/internal/config"
 )
 
 type Qemu struct{}
 
-func (h *Qemu) Create(vm *VMConfig) error {
+func (h *Qemu) Create(vm *Machine) error {
 	return h.Start(vm)
 }
 
-func (h *Qemu) Start(vm *VMConfig) error {
+func (h *Qemu) Start(vm *Machine) error {
 	command := "qemu-system-x86_64"
 	cfg := config.LoadConfig()
 	dir := filepath.Join(cfg.Directories.Instances, vm.Name)
 	args := []string{
 		"-machine", fmt.Sprintf("accel=%s,type=q35", getHypervisor()),
 		"-cpu", "host",
-		"-smp", vm.Specs.CPUs,
-		"-m", vm.Specs.Memory,
+		"-smp", vm.Resources.CPUs,
+		"-m", vm.Resources.Memory,
 		"-nographic",
 		"-netdev", fmt.Sprintf("bridge,id=%s,br=virbr0", vm.Network.NicName),
 		"-device", fmt.Sprintf("virtio-net-pci,netdev=%s,id=virtnet0,mac=%s", vm.Network.NicName, vm.Network.MacAddress),
@@ -34,7 +33,16 @@ func (h *Qemu) Start(vm *VMConfig) error {
 		"-drive", fmt.Sprintf("if=virtio,format=raw,file=%s/seed.img", dir),
 	}
 
-	args = append(args, parseQemuMounts(vm.Mount)...)
+	var mountCommand []string
+	if vm.Mount.Name != "" {
+		mountCommand = []string{
+			"-fsdev",
+			fmt.Sprintf("local,security_model=passthrough,id=fsdev%d,path=%s", 0, vm.Mount.HostPath),
+			"--device",
+			fmt.Sprintf("virtio-9p-pci,id=fs%d,fsdev=fsdev%d,mount_tag=%s", 0, 0, vm.Mount.Name),
+		}
+	}
+	args = append(args, mountCommand...)
 	cmd := exec.Command(command, args...)
 	err := cmd.Start()
 	if err != nil {
@@ -44,7 +52,7 @@ func (h *Qemu) Start(vm *VMConfig) error {
 	return nil
 }
 
-func (h *Qemu) Stop(vm *VMConfig) error {
+func (h *Qemu) Stop(vm *Machine) error {
 	cfg := config.LoadConfig()
 	command := "ssh"
 	args := []string{
@@ -62,7 +70,7 @@ func (h *Qemu) Stop(vm *VMConfig) error {
 	return nil
 }
 
-func (h *Qemu) ForceStop(vm *VMConfig) error {
+func (h *Qemu) ForceStop(vm *Machine) error {
 	command := "kill"
 	args := []string{
 		"-9",
@@ -77,7 +85,7 @@ func (h *Qemu) ForceStop(vm *VMConfig) error {
 	return nil
 }
 
-func (h *Qemu) Status(vm *VMConfig) (string, error) {
+func (h *Qemu) Status(vm *Machine) (string, error) {
 	cfg := config.LoadConfig()
 	if _, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name, "vm.pid")); os.IsNotExist(err) {
 		return "shut off", nil
@@ -85,7 +93,7 @@ func (h *Qemu) Status(vm *VMConfig) (string, error) {
 	return "running", nil
 }
 
-func (h *Qemu) Delete(vm *VMConfig) error {
+func (h *Qemu) Delete(vm *Machine) error {
 	cfg := config.LoadConfig()
 
 	status, _ := h.Status(vm)
@@ -107,21 +115,6 @@ func (h *Qemu) Delete(vm *VMConfig) error {
 	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, vm.Name))
 }
 
-func parseQemuMounts(mount Mount) []string {
-	if mount.Name == "" {
-		return []string{}
-	}
-	home, _ := os.UserHomeDir()
-	path := strings.Replace(mount.HostPath, "~", home, -1)
-	mountCommand := []string{
-		"-fsdev",
-		fmt.Sprintf("local,security_model=passthrough,id=fsdev%d,path=%s", 0, path),
-		"--device",
-		fmt.Sprintf("virtio-9p-pci,id=fs%d,fsdev=fsdev%d,mount_tag=%s", 0, 0, mount.Name),
-	}
-	return mountCommand
-}
-
 // Get Hypervisor driver
 func getHypervisor() string {
 	driver := "kvm"
@@ -133,7 +126,7 @@ func getHypervisor() string {
 	return driver
 }
 
-func (h *Qemu) getPID(vm *VMConfig) string {
+func (h *Qemu) getPID(vm *Machine) string {
 	cfg := config.LoadConfig()
 	data, _ := os.ReadFile(filepath.Join(cfg.Directories.Instances, vm.Name, "vm.pid"))
 	return string(data)

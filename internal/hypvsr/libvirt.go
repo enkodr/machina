@@ -1,4 +1,4 @@
-package vm
+package hypvsr
 
 import (
 	"errors"
@@ -11,12 +11,21 @@ import (
 	"github.com/enkodr/machina/internal/config"
 )
 
+type Hypervisor interface {
+	Create(vm *Machine) error
+	Start(vm *Machine) error
+	Stop(vm *Machine) error
+	ForceStop(vm *Machine) error
+	Status(vm *Machine) (string, error)
+	Delete(vm *Machine) error
+}
+
 type Libvirt struct{}
 
-func (h *Libvirt) Create(vm *VMConfig) error {
+func (h *Libvirt) Create(vm *Machine) error {
 	cfg := config.LoadConfig()
 	command := "virt-install"
-	ram, err := convertMemory(vm.Specs.Memory)
+	ram, err := convertMemory(vm.Resources.Memory)
 	if err != nil {
 		return errors.New("invalid memory")
 	}
@@ -25,7 +34,7 @@ func (h *Libvirt) Create(vm *VMConfig) error {
 		"--virt-type", "kvm",
 		"--name", vm.Name,
 		"--ram", ram,
-		fmt.Sprintf("--vcpus=%s", vm.Specs.CPUs),
+		fmt.Sprintf("--vcpus=%s", vm.Resources.CPUs),
 		"--os-variant", vm.Variant,
 		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, vm.Name, "disk.img")),
 		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, vm.Name, "seed.img")),
@@ -34,7 +43,15 @@ func (h *Libvirt) Create(vm *VMConfig) error {
 		"--noautoconsole",
 	}
 
-	args = append(args, parseLibvirtMounts(vm.Mount)...)
+	// Parse volume mount
+	var mountCommand []string
+	if vm.Mount.Name != "" {
+		mountCommand = []string{
+			"--filesystem",
+			fmt.Sprintf("type=mount,mode=passthrough,source=%s,target=%s", vm.Mount.HostPath, vm.Mount.GuestPath),
+		}
+	}
+	args = append(args, mountCommand...)
 
 	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer logFile.Close()
@@ -48,20 +65,7 @@ func (h *Libvirt) Create(vm *VMConfig) error {
 	return err
 }
 
-func parseLibvirtMounts(mount Mount) []string {
-	if mount.Name == "" {
-		return []string{}
-	}
-	mountCommand := []string{
-		"--filesystem",
-		fmt.Sprintf("type=mount,mode=passthrough,source=%s,target=%s", mount.HostPath, mount.GuestPath),
-		// fmt.Sprintf("%s,%s", path, m.Path),
-	}
-
-	return mountCommand
-}
-
-func (h *Libvirt) Start(vm *VMConfig) error {
+func (h *Libvirt) Start(vm *Machine) error {
 	cfg := config.LoadConfig()
 	command := "virsh"
 	args := []string{
@@ -81,7 +85,7 @@ func (h *Libvirt) Start(vm *VMConfig) error {
 	return nil
 }
 
-func (h *Libvirt) Stop(vm *VMConfig) error {
+func (h *Libvirt) Stop(vm *Machine) error {
 	cfg := config.LoadConfig()
 	command := "virsh"
 	args := []string{
@@ -102,7 +106,7 @@ func (h *Libvirt) Stop(vm *VMConfig) error {
 	return err
 }
 
-func (h *Libvirt) ForceStop(vm *VMConfig) error {
+func (h *Libvirt) ForceStop(vm *Machine) error {
 	cfg := config.LoadConfig()
 	command := "virsh"
 	args := []string{
@@ -123,7 +127,7 @@ func (h *Libvirt) ForceStop(vm *VMConfig) error {
 	return err
 }
 
-func (h *Libvirt) Status(vm *VMConfig) (string, error) {
+func (h *Libvirt) Status(vm *Machine) (string, error) {
 	cfg := config.LoadConfig()
 	command := "virsh"
 	args := []string{
@@ -142,7 +146,7 @@ func (h *Libvirt) Status(vm *VMConfig) (string, error) {
 	return strOutput, nil
 }
 
-func (h *Libvirt) Delete(vm *VMConfig) error {
+func (h *Libvirt) Delete(vm *Machine) error {
 	cfg := config.LoadConfig()
 	command := "virsh"
 	args := []string{
