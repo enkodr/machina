@@ -26,7 +26,7 @@ credentials:
   - "admin"
   
 # This option specifies the hardware you want to set for the machine
-specs:
+resources:
   # Sets the number of cores to set for the machine
   cpus: 2
   # Sets the ammount of RAM to set for the machine. You must use the 
@@ -46,3 +46,12 @@ scripts:
   init: |
     #!/bin/bash
     echo "Welcome to RockyLinux"
+
+# Mounts defines a set of mount points from the host into the VM, where the
+# `hostPath` is the path in the host and the `guestPath` sets the path inside the VM 
+# where the mount will be defined. 
+# This will use `virtio-9p` driver.
+mount:
+  # name: share
+  # hostPath: "/path/to/host/folder"
+  # guestPath: "/path/to/guest/folder"

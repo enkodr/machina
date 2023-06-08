@@ -118,51 +118,45 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 	k := &kind{}
 	yaml.Unmarshal(tpl, k)
 
-	var km KindManager
-	var err error
 	switch k.Kind {
 	case "Machine":
-		km, err = parseMachineTemplate(tpl)
+		vm := &Machine{}
+		err := yaml.Unmarshal(tpl, vm)
 		if err != nil {
 			return nil, err
 		}
-		break
+		err = vm.extend()
+		if err != nil {
+			return nil, err
+		}
+		return vm, nil
 	case "Cluster":
-		km, err = parseClusterTemplate(tpl)
+		c := &Cluster{}
+		err := yaml.Unmarshal(tpl, c)
 		if err != nil {
 			return nil, err
 		}
-		break
-	default:
-		return nil, errors.New("unknown kind")
+		for _, vm := range c.Machines {
+			vm.extend()
+		}
+		return c, nil
 	}
 
-	return km, nil
+	return nil, errors.New("unsupported kind")
 }
 
-func parseMachineTemplate(tpl []byte) (*Machine, error) {
-	vm := &Machine{}
-
-	err := yaml.Unmarshal(tpl, vm)
-	if err != nil {
-		return nil, err
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
+func (vm *Machine) extend() error {
 	for vm.Extends != "" {
 		tplFile := fmt.Sprintf("%s/%s.yaml", endpoint, vm.Extends)
 		baseTpl, err := netutil.Download(tplFile)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		base := &Machine{}
 		err = yaml.Unmarshal(baseTpl, base)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		vm.Extends = base.Extends
 		base.Scripts = Scripts{}
@@ -172,14 +166,7 @@ func parseMachineTemplate(tpl []byte) (*Machine, error) {
 	vm.Resources.Disk = strings.ToUpper(vm.Resources.Disk)
 	vm.Resources.Memory = strings.ToUpper(vm.Resources.Memory)
 
-	return vm, nil
-}
-
-func parseClusterTemplate(tpl []byte) (*Cluster, error) {
-	c := &Cluster{}
-
-	return c, nil
-
+	return nil
 }
 
 // GetTemplateList gets the list of available templates
