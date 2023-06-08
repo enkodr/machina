@@ -1,12 +1,46 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 
 	"gopkg.in/yaml.v3"
 )
+
+type Filename int
+
+const (
+	NetworkFilename Filename = iota
+	UserdataFilename
+	PrivateKeyFilename
+	MachineFilename
+	SeedImageFilename
+	DiskFilename
+	PIDFilename
+)
+
+func GetFilename(name string, fn Filename) string {
+	switch fn {
+	case NetworkFilename:
+		return fmt.Sprintf("%s-network.cfg", name)
+	case UserdataFilename:
+		return fmt.Sprintf("%s-userdata.yaml", name)
+	case PrivateKeyFilename:
+		return fmt.Sprintf("%s-id_rsa", name)
+	case MachineFilename:
+		return fmt.Sprintf("%s-machine.yaml", name)
+	case SeedImageFilename:
+		return fmt.Sprintf("%s-seed.img", name)
+	case DiskFilename:
+		return fmt.Sprintf("%s-disk.img", name)
+	case PIDFilename:
+		return fmt.Sprintf("%s-vm.pid", name)
+	}
+
+	return ""
+}
 
 type Config struct {
 	Hypervisor  string      `yaml:"hypervisor,omitempty"`

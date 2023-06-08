@@ -57,7 +57,7 @@ func (h *Qemu) Stop(vm *Machine) error {
 	command := "ssh"
 	args := []string{
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
+		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PrivateKeyFilename)),
 		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
 		"sudo", "shutdown", "now",
 	}
@@ -87,7 +87,7 @@ func (h *Qemu) ForceStop(vm *Machine) error {
 
 func (h *Qemu) Status(vm *Machine) (string, error) {
 	cfg := config.LoadConfig()
-	if _, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name, "vm.pid")); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PIDFilename))); os.IsNotExist(err) {
 		return "shut off", nil
 	}
 	return "running", nil
@@ -128,6 +128,6 @@ func getHypervisor() string {
 
 func (h *Qemu) getPID(vm *Machine) string {
 	cfg := config.LoadConfig()
-	data, _ := os.ReadFile(filepath.Join(cfg.Directories.Instances, vm.Name, "vm.pid"))
+	data, _ := os.ReadFile(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PIDFilename)))
 	return string(data)
 }

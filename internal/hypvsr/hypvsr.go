@@ -101,6 +101,23 @@ func NewMachine(name string) (KindManager, error) {
 		return nil, err
 	}
 
+	// Load configuration
+	cfg := config.LoadConfig()
+
+	// Get the name from the path if is local template
+	if _, ok := tpl.(*LocalTemplate); ok {
+		name = strings.Split(filepath.Base(name), ".yaml")[0]
+	}
+
+	// Check if VM already exists
+	_, err = os.Stat(filepath.Join(cfg.Directories.Instances, name))
+	if !os.IsNotExist(err) {
+		return nil, errors.New("machine already exists")
+	}
+
+	// Create directory structure
+	imgutil.EnsureDirectories(name)
+
 	return kind, nil
 }
 
@@ -108,22 +125,14 @@ func (vm *Machine) Prepare() error {
 	// Load configuration
 	cfg := config.LoadConfig()
 
-	// Check if VM already exists
-	_, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name))
-	if !os.IsNotExist(err) {
-		return errors.New("machine already exists")
-	}
-
-	// Create directory structure
-	imgutil.EnsureDirectories(vm.Name)
-
 	// Create network configuration
 	net := netutil.NewNetwork()
 	netYaml, err := yaml.Marshal(net)
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "network.cfg"), netYaml, 0644)
+
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.NetworkFilename)), netYaml, 0644)
 	if err != nil {
 		return err
 	}
@@ -149,14 +158,15 @@ func (vm *Machine) Prepare() error {
 	if err != nil {
 		return err
 	}
+
 	usrYaml = append([]byte("#cloud-config\n"), usrYaml...)
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "userdata.yaml"), usrYaml, 0644)
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.UserdataFilename)), usrYaml, 0644)
 	if err != nil {
 		return err
 	}
 
 	// Save private key
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"), clCfg.PrivateKey, 0600)
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PrivateKeyFilename)), clCfg.PrivateKey, 0600)
 	if err != nil {
 		return err
 	}
@@ -170,7 +180,7 @@ func (vm *Machine) Prepare() error {
 		return err
 	}
 
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "machina.yaml"), vmYaml, 0644)
+	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.MachineFilename)), vmYaml, 0644)
 	if err != nil {
 		return err
 	}
@@ -206,12 +216,13 @@ func (vm *Machine) CreateDisks() error {
 	// Create main disk
 	image, _ := imgutil.GetFilenameFromURL(vm.Image.URL)
 	cfg := config.LoadConfig()
+	diskFileName := fmt.Sprintf("%s-disk.img", vm.Name)
 	command := "qemu-img"
 	args := []string{
 		"create",
 		"-F", "qcow2",
 		"-b", filepath.Join(cfg.Directories.Images, image),
-		"-f", "qcow2", filepath.Join(cfg.Directories.Instances, vm.Name, "disk.img"),
+		"-f", "qcow2", filepath.Join(cfg.Directories.Instances, vm.Name, diskFileName),
 		vm.Resources.Disk,
 	}
 	cmd := exec.Command(command, args...)
@@ -223,9 +234,9 @@ func (vm *Machine) CreateDisks() error {
 	// create seed disk
 	command = "cloud-localds"
 	args = []string{
-		fmt.Sprintf("--network-config=%s", filepath.Join(cfg.Directories.Instances, vm.Name, "network.cfg")),
-		filepath.Join(cfg.Directories.Instances, vm.Name, "seed.img"),
-		filepath.Join(cfg.Directories.Instances, vm.Name, "userdata.yaml"),
+		fmt.Sprintf("--network-config=%s", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.NetworkFilename))),
+		filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.SeedImageFilename)),
+		filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.UserdataFilename)),
 	}
 	cmd = exec.Command(command, args...)
 	err = cmd.Run()
@@ -359,7 +370,7 @@ func (vm *Machine) CopyContent(origin string, dest string) error {
 	args := []string{
 		"-r",
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
+		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PrivateKeyFilename)),
 		origin,
 		dest,
 	}
@@ -459,7 +470,7 @@ func (vm *Machine) RunInitScripts() error {
 	command := "scp"
 	args := []string{
 		"-o", "StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
+		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PrivateKeyFilename)),
 		"-r",
 		filepath.Join(cfg.Directories.Instances, vm.Name, "bin/"),
 		fmt.Sprintf("%s@%s:/tmp/machina", vm.Credentials.Username, vm.Network.IPAddress),
@@ -475,7 +486,7 @@ func (vm *Machine) RunInitScripts() error {
 	command = "ssh"
 	args = []string{
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
+		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PrivateKeyFilename)),
 		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
 		"/tmp/machina/install.sh",
 	}
@@ -495,7 +506,7 @@ func (vm *Machine) Shell() error {
 	// Copies the init script into the VM
 	command := "ssh"
 	args := []string{
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, "id_rsa"),
+		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PrivateKeyFilename)),
 		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
 	}
 	cmd := exec.Command(command, args...)

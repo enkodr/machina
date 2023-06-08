@@ -24,6 +24,7 @@ type Templater interface {
 
 type LocalTemplate struct {
 	path string
+	name string
 }
 type RemoteTemplate struct {
 	name string
@@ -80,7 +81,8 @@ func Load(name string) (KindManager, error) {
 	cfg := config.LoadConfig()
 
 	// Reads the YAML file
-	data, err := os.ReadFile(filepath.Join(cfg.Directories.Instances, name, "machina.yaml"))
+	machineYamlFileName := fmt.Sprintf("%s-machine.yaml", name)
+	data, err := os.ReadFile(filepath.Join(cfg.Directories.Instances, name, machineYamlFileName))
 	// Loads the YAML to identify the km
 	var k kind
 	err = yaml.Unmarshal(data, &k)
