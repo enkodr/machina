@@ -11,11 +11,14 @@ import (
 // Get's the commands and the created machines names for auto-completion
 func bashCompleteInstanceNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// Load configuration from file
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
 
 	// Get instances names for completion
 	var instances []string
-	vms, err := os.ReadDir(cfg.Directories.Instances)
+	vms, err := os.ReadDir(cfg.Directories.Machines)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}

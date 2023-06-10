@@ -78,11 +78,14 @@ func (f *RemoteTemplate) Load() (KindManager, error) {
 // Load loads the YAML file content into the struct
 func Load(name string) (KindManager, error) {
 	// Loads the configuration
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	// Reads the YAML file
-	machineYamlFileName := fmt.Sprintf("%s-machine.yaml", name)
-	data, err := os.ReadFile(filepath.Join(cfg.Directories.Instances, name, machineYamlFileName))
+	data, err := os.ReadFile(filepath.Join(cfg.Directories.Machines, name, config.GetFilename(config.MachineFilename)))
+
 	// Loads the YAML to identify the km
 	var k kind
 	err = yaml.Unmarshal(data, &k)
@@ -93,7 +96,9 @@ func Load(name string) (KindManager, error) {
 	var km KindManager
 	switch k.Kind {
 	case "Machine":
-		km = &Machine{}
+		km = &Machine{
+			config: cfg,
+		}
 		// Unmarshal the Machine
 		err = yaml.Unmarshal(data, km)
 		if err != nil {
@@ -101,7 +106,9 @@ func Load(name string) (KindManager, error) {
 		}
 		break
 	case "Cluster":
-		km = &Cluster{}
+		km = &Cluster{
+			config: cfg,
+		}
 		// Unmarshal the Machine
 		err = yaml.Unmarshal(data, km)
 		if err != nil {
@@ -116,6 +123,11 @@ func Load(name string) (KindManager, error) {
 
 // parse the template from yaml to struct
 func parseTemplate(tpl []byte) (KindManager, error) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	// Identify the kind
 	k := &kind{}
 	yaml.Unmarshal(tpl, k)
@@ -131,6 +143,7 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 		if err != nil {
 			return nil, err
 		}
+		vm.config = cfg
 		return vm, nil
 	case "Cluster":
 		c := &Cluster{}
@@ -141,6 +154,7 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 		for _, vm := range c.Machines {
 			vm.extend()
 		}
+		c.config = cfg
 		return c, nil
 	}
 

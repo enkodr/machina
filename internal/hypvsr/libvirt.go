@@ -23,7 +23,10 @@ type Hypervisor interface {
 type Libvirt struct{}
 
 func (h *Libvirt) Create(vm *Machine) error {
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
 	command := "virt-install"
 	ram, err := convertMemory(vm.Resources.Memory)
 	if err != nil {
@@ -36,8 +39,8 @@ func (h *Libvirt) Create(vm *Machine) error {
 		"--ram", ram,
 		fmt.Sprintf("--vcpus=%s", vm.Resources.CPUs),
 		"--os-variant", vm.Variant,
-		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.DiskFilename))),
-		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.SeedImageFilename))),
+		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Machines, vm.Name, config.GetFilename(config.DiskFilename))),
+		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Machines, vm.Name, config.GetFilename(config.SeedImageFilename))),
 		"--import",
 		"--network", fmt.Sprintf("bridge=virbr0,model=virtio,mac=%s", vm.Network.MacAddress),
 		"--noautoconsole",
@@ -53,7 +56,7 @@ func (h *Libvirt) Create(vm *Machine) error {
 	}
 	args = append(args, mountCommand...)
 
-	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Machines, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer logFile.Close()
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = logFile
@@ -66,19 +69,22 @@ func (h *Libvirt) Create(vm *Machine) error {
 }
 
 func (h *Libvirt) Start(vm *Machine) error {
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
 	command := "virsh"
 	args := []string{
 		"--connect", cfg.Connection,
 		"start",
 		vm.Name,
 	}
-	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Machines, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer logFile.Close()
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = logFile
 
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return err
 	}
@@ -86,7 +92,10 @@ func (h *Libvirt) Start(vm *Machine) error {
 }
 
 func (h *Libvirt) Stop(vm *Machine) error {
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
 	command := "virsh"
 	args := []string{
 		"--connect", cfg.Connection,
@@ -94,12 +103,12 @@ func (h *Libvirt) Stop(vm *Machine) error {
 		vm.Name,
 	}
 
-	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Machines, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer logFile.Close()
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = logFile
 
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return err
 	}
@@ -107,7 +116,10 @@ func (h *Libvirt) Stop(vm *Machine) error {
 }
 
 func (h *Libvirt) ForceStop(vm *Machine) error {
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
 	command := "virsh"
 	args := []string{
 		"--connect", cfg.Connection,
@@ -115,12 +127,12 @@ func (h *Libvirt) ForceStop(vm *Machine) error {
 		vm.Name,
 	}
 
-	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Machines, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer logFile.Close()
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = logFile
 
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return err
 	}
@@ -128,7 +140,10 @@ func (h *Libvirt) ForceStop(vm *Machine) error {
 }
 
 func (h *Libvirt) Status(vm *Machine) (string, error) {
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return "", err
+	}
 	command := "virsh"
 	args := []string{
 		"--connect", cfg.Connection,
@@ -147,7 +162,10 @@ func (h *Libvirt) Status(vm *Machine) (string, error) {
 }
 
 func (h *Libvirt) Delete(vm *Machine) error {
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
 	command := "virsh"
 	args := []string{
 		"--connect", cfg.Connection,
@@ -155,12 +173,12 @@ func (h *Libvirt) Delete(vm *Machine) error {
 		vm.Name,
 	}
 
-	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Machines, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer logFile.Close()
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = logFile
 
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return err
 	}
@@ -209,6 +227,6 @@ func (h *Libvirt) Delete(vm *Machine) error {
 		return err
 	}
 
-	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, vm.Name))
+	return os.RemoveAll(filepath.Join(cfg.Directories.Machines, vm.Name))
 
 }

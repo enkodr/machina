@@ -9,10 +9,18 @@ import (
 	"github.com/enkodr/machina/internal/osutil"
 )
 
-func EnsureDirectories(name string) {
-	cfg := config.LoadConfig()
+func EnsureDirectories() error {
+	// Load configuration
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
+
 	osutil.MkDir(cfg.Directories.Images)
-	osutil.MkDir(filepath.Join(cfg.Directories.Instances, name))
+	osutil.MkDir(filepath.Join(cfg.Directories.Machines))
+	osutil.MkDir(filepath.Join(cfg.Directories.Clusters))
+
+	return nil
 }
 
 // GetFileName extracts and returns the name of the file from the URL

@@ -11,18 +11,19 @@ import (
 
 func TestEnsureDirectories(t *testing.T) {
 	name := "test"
-	EnsureDirectories(name)
-	cfg := config.LoadConfig()
+	EnsureDirectories()
+	cfg, err := config.LoadConfig()
+	assert.NoError(t, err)
 
 	// Check if directories were created
 	_, err := os.Stat(filepath.Join(cfg.Directories.Images))
 	assert.NoError(t, err)
 
-	_, err = os.Stat(filepath.Join(cfg.Directories.Instances, name))
+	_, err = os.Stat(filepath.Join(cfg.Directories.Machines, name))
 	assert.NoError(t, err)
 
 	// Cleanup test directory
-	os.Remove(filepath.Join(cfg.Directories.Instances, name))
+	os.Remove(filepath.Join(cfg.Directories.Machines, name))
 }
 
 func TestGetFilenameFromURL(t *testing.T) {

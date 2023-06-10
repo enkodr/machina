@@ -25,8 +25,7 @@ var createCommand = &cobra.Command{
 
 		// Check the passed parameters
 		switch {
-		// Get the template name to load from the first argument,
-		// if passed
+		// Get the template name to load from the first argument, if passed
 		case len(args) == 1:
 			name = args[0]
 		// Get the filename from the file parameter
@@ -36,7 +35,7 @@ var createCommand = &cobra.Command{
 
 		// Create a new VM
 		fmt.Printf("Creating machine\n")
-		vm, err := hypvsr.NewMachine(name)
+		vm, err := hypvsr.NewInstance(name)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating machine\n")
 			os.Exit(1)
@@ -44,6 +43,11 @@ var createCommand = &cobra.Command{
 
 		// Prepare necessary files for machine creation
 		fmt.Printf("Creating necessary files\n")
+		err = vm.CreateDir()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Machine already exists\n")
+			os.Exit(1)
+		}
 		err = vm.Prepare()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating files\n")

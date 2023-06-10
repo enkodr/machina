@@ -19,25 +19,44 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// KindManager defines an interface for managing virtual machine (VM) or cluster instances.
+// It provides a standard set of operations that can be performed on these instances, regardless of the underlying type.
 type KindManager interface {
+	// Create is responsible for creating a new instance.
 	Create() error
+	// Start initiates the instance.
 	Start() error
+	// Stop attempts to gracefully stop the instance.
 	Stop() error
+	// ForceStop forcefully stops the instance.
 	ForceStop() error
+	// Status returns the current status of the instance.
 	Status() (string, error)
+	// Delete removes the instance.
 	Delete() error
+	// CopyContent copies content from a source to a destination path within the instance.
 	CopyContent(string, string) error
+	// Prepare gets the instance ready for use, typically involves steps like setting up the network, file systems, etc.
 	Prepare() error
+	// DownloadImage downloads the necessary image for creating the instance.
 	DownloadImage() error
+	// CreateDisks creates the necessary disks for the instance.
 	CreateDisks() error
+	// Wait waits until the instance is ready to use.
 	Wait() error
+	// Shell provides an interactive shell to the instance.
 	Shell() error
+	// RunInitScripts runs initialization scripts on the instance.
 	RunInitScripts() error
+	// GetVMs returns a slice of Machine that represents the VMs under management.
 	GetVMs() []Machine
+	// CreateDir creates a necessary directory for the instance.
+	CreateDir() error
 }
 
 // Machine holds the configuration details for a single machine
 type Machine struct {
+	config      *config.Config
 	Kind        string      `yaml:"kind"`                  // Kind of the resource, should be 'Machine'
 	Name        string      `yaml:"name,omitempty"`        // Name of the machine. Must be unique in the system
 	Extends     string      `yaml:"extends,omitempty"`     // Name of the Machine to extend
@@ -93,38 +112,37 @@ type Network struct {
 	MacAddress string `yaml:"macAddress,omitempty"` // MacAddress of the NIC
 }
 
-// NewMachine creates a new machine
-func NewMachine(name string) (KindManager, error) {
-	tpl := NewTemplate(name)
-	kind, err := tpl.Load()
+// NewInstance creates a new machine
+func NewInstance(name string) (KindManager, error) {
+	// Instantiate a new template
+	// Load the template
+	kind, err := NewTemplate(name).Load()
 	if err != nil {
 		return nil, err
 	}
 
-	// Load configuration
-	cfg := config.LoadConfig()
-
-	// Get the name from the path if is local template
-	if _, ok := tpl.(*LocalTemplate); ok {
-		name = strings.Split(filepath.Base(name), ".yaml")[0]
-	}
-
-	// Check if VM already exists
-	_, err = os.Stat(filepath.Join(cfg.Directories.Instances, name))
-	if !os.IsNotExist(err) {
-		return nil, errors.New("machine already exists")
-	}
-
 	// Create directory structure
-	imgutil.EnsureDirectories(name)
+	err = imgutil.EnsureDirectories()
+	if err != nil {
+		return nil, err
+	}
 
 	return kind, nil
 }
 
-func (vm *Machine) Prepare() error {
-	// Load configuration
-	cfg := config.LoadConfig()
+func (vm *Machine) CreateDir() error {
+	// Check if VM already exists
+	_, err := os.Stat(filepath.Join(vm.config.Directories.Machines, vm.Name))
+	if !os.IsNotExist(err) {
+		return errors.New("machine already exists")
+	}
 
+	osutil.MkDir(filepath.Join(vm.config.Directories.Machines, vm.Name))
+
+	return nil
+}
+
+func (vm *Machine) Prepare() error {
 	// Create network configuration
 	net := netutil.NewNetwork()
 	netYaml, err := yaml.Marshal(net)
@@ -132,7 +150,7 @@ func (vm *Machine) Prepare() error {
 		return err
 	}
 
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.NetworkFilename)), netYaml, 0644)
+	err = os.WriteFile(filepath.Join(vm.config.Directories.Machines, vm.Name, config.GetFilename(config.NetworkFilename)), netYaml, 0644)
 	if err != nil {
 		return err
 	}
@@ -160,13 +178,13 @@ func (vm *Machine) Prepare() error {
 	}
 
 	usrYaml = append([]byte("#cloud-config\n"), usrYaml...)
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.UserdataFilename)), usrYaml, 0644)
+	err = os.WriteFile(filepath.Join(vm.config.Directories.Machines, vm.Name, config.GetFilename(config.UserdataFilename)), usrYaml, 0644)
 	if err != nil {
 		return err
 	}
 
 	// Save private key
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PrivateKeyFilename)), clCfg.PrivateKey, 0600)
+	err = os.WriteFile(filepath.Join(vm.config.Directories.Machines, vm.Name, config.GetFilename(config.PrivateKeyFilename)), clCfg.PrivateKey, 0600)
 	if err != nil {
 		return err
 	}
@@ -180,7 +198,7 @@ func (vm *Machine) Prepare() error {
 		return err
 	}
 
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.MachineFilename)), vmYaml, 0644)
+	err = os.WriteFile(filepath.Join(vm.config.Directories.Machines, vm.Name, config.GetFilename(config.MachineFilename)), vmYaml, 0644)
 	if err != nil {
 		return err
 	}
@@ -190,8 +208,7 @@ func (vm *Machine) Prepare() error {
 }
 
 func (vm *Machine) DownloadImage() error {
-	cfg := config.LoadConfig()
-	imgDir := cfg.Directories.Images
+	imgDir := vm.config.Directories.Images
 	fileName, err := imgutil.GetFilenameFromURL(vm.Image.URL)
 	if err != nil {
 		return err
@@ -215,14 +232,12 @@ func (vm *Machine) DownloadImage() error {
 func (vm *Machine) CreateDisks() error {
 	// Create main disk
 	image, _ := imgutil.GetFilenameFromURL(vm.Image.URL)
-	cfg := config.LoadConfig()
-	diskFileName := fmt.Sprintf("%s-disk.img", vm.Name)
 	command := "qemu-img"
 	args := []string{
 		"create",
 		"-F", "qcow2",
-		"-b", filepath.Join(cfg.Directories.Images, image),
-		"-f", "qcow2", filepath.Join(cfg.Directories.Instances, vm.Name, diskFileName),
+		"-b", filepath.Join(vm.config.Directories.Images, image),
+		"-f", "qcow2", filepath.Join(vm.config.Directories.Machines, vm.Name, config.GetFilename(config.DiskFilename)),
 		vm.Resources.Disk,
 	}
 	cmd := exec.Command(command, args...)
@@ -234,9 +249,9 @@ func (vm *Machine) CreateDisks() error {
 	// create seed disk
 	command = "cloud-localds"
 	args = []string{
-		fmt.Sprintf("--network-config=%s", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.NetworkFilename))),
-		filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.SeedImageFilename)),
-		filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.UserdataFilename)),
+		fmt.Sprintf("--network-config=%s", filepath.Join(vm.config.Directories.Machines, vm.Name, config.GetFilename(config.NetworkFilename))),
+		filepath.Join(vm.config.Directories.Machines, vm.Name, config.GetFilename(config.SeedImageFilename)),
+		filepath.Join(vm.config.Directories.Machines, vm.Name, config.GetFilename(config.UserdataFilename)),
 	}
 	cmd = exec.Command(command, args...)
 	err = cmd.Run()
@@ -249,12 +264,9 @@ func (vm *Machine) CreateDisks() error {
 
 // Create creates the VM and starts it
 func (vm *Machine) Create() error {
-	// Load configuration
-	cfg := config.LoadConfig()
-
 	// Define the Hypervisor to use
 	var h Hypervisor
-	if cfg.Hypervisor == "qemu" {
+	if vm.config.Hypervisor == "qemu" {
 		h = &Qemu{}
 	} else {
 		h = &Libvirt{}
@@ -281,12 +293,9 @@ func (vm *Machine) Wait() error {
 
 // Starts a stopped vm
 func (vm *Machine) Start() error {
-	// Load configuration
-	cfg := config.LoadConfig()
-
 	// Define the Hypervisor to use
 	var h Hypervisor
-	if cfg.Hypervisor == "qemu" {
+	if vm.config.Hypervisor == "qemu" {
 		h = &Qemu{}
 	} else {
 		h = &Libvirt{}
@@ -296,12 +305,9 @@ func (vm *Machine) Start() error {
 
 // Stops a running VM
 func (vm *Machine) Stop() error {
-	// Load configuration
-	cfg := config.LoadConfig()
-
 	// Define the Hypervisor to use
 	var h Hypervisor
-	if cfg.Hypervisor == "qemu" {
+	if vm.config.Hypervisor == "qemu" {
 		h = &Qemu{}
 	} else {
 		h = &Libvirt{}
@@ -311,12 +317,9 @@ func (vm *Machine) Stop() error {
 
 // Force stops a running VM
 func (vm *Machine) ForceStop() error {
-	// Load configuration
-	cfg := config.LoadConfig()
-
 	// Define the Hypervisor to use
 	var h Hypervisor
-	if cfg.Hypervisor == "qemu" {
+	if vm.config.Hypervisor == "qemu" {
 		h = &Qemu{}
 	} else {
 		h = &Libvirt{}
@@ -326,12 +329,9 @@ func (vm *Machine) ForceStop() error {
 
 // Gets the status of a VM
 func (vm *Machine) Status() (string, error) {
-	// Load configuration
-	cfg := config.LoadConfig()
-
 	// Define the Hypervisor to use
 	var h Hypervisor
-	if cfg.Hypervisor == "qemu" {
+	if vm.config.Hypervisor == "qemu" {
 		h = &Qemu{}
 	} else {
 		h = &Libvirt{}
@@ -341,12 +341,9 @@ func (vm *Machine) Status() (string, error) {
 
 // Deletes a VM
 func (vm *Machine) Delete() error {
-	// Load configuration
-	cfg := config.LoadConfig()
-
 	// Define the Hypervisor to use
 	var h Hypervisor
-	if cfg.Hypervisor == "qemu" {
+	if vm.config.Hypervisor == "qemu" {
 		h = &Qemu{}
 	} else {
 		h = &Libvirt{}
@@ -356,7 +353,6 @@ func (vm *Machine) Delete() error {
 
 // Copies content from host to guest or vice-versa
 func (vm *Machine) CopyContent(origin string, dest string) error {
-	cfg := config.LoadConfig()
 	// Define the origin and destination for copying content
 	hostToVM := true
 	if hostToVM {
@@ -370,7 +366,7 @@ func (vm *Machine) CopyContent(origin string, dest string) error {
 	args := []string{
 		"-r",
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PrivateKeyFilename)),
+		"-i", filepath.Join(vm.config.Directories.Machines, vm.Name, config.GetFilename(config.PrivateKeyFilename)),
 		origin,
 		dest,
 	}
@@ -386,9 +382,7 @@ func (vm *Machine) CopyContent(origin string, dest string) error {
 
 // Creates the script files from the template
 func (vm *Machine) createScriptFiles() error {
-	// Prepare
-	cfg := config.LoadConfig()
-	err := os.MkdirAll(filepath.Join(cfg.Directories.Instances, vm.Name, "bin"), 0755)
+	err := os.MkdirAll(filepath.Join(vm.config.Directories.Machines, vm.Name, "bin"), 0755)
 	if err != nil {
 		return nil
 	}
@@ -409,7 +403,7 @@ StandardOutput=journal
 WantedBy=multi-user.target
 `
 
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "bin/machina.service"), []byte(sysDSvc), 0744)
+	err = os.WriteFile(filepath.Join(vm.config.Directories.Machines, vm.Name, "bin/machina.service"), []byte(sysDSvc), 0744)
 	if err != nil {
 		return nil
 	}
@@ -427,14 +421,14 @@ sudo systemctl enable machina.service
 sudo systemctl start machina.service
 `
 	vm.Scripts.Install += installScript
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "bin/install.sh"), []byte(vm.Scripts.Install), 0744)
+	err = os.WriteFile(filepath.Join(vm.config.Directories.Machines, vm.Name, "bin/install.sh"), []byte(vm.Scripts.Install), 0744)
 	if err != nil {
 		return nil
 	}
 
 	// Boot script
 	var mountName string
-	if cfg.Hypervisor == "qemu" {
+	if vm.config.Hypervisor == "qemu" {
 		mountName = vm.Mount.Name
 	} else {
 		mountName = vm.Mount.GuestPath
@@ -450,12 +444,12 @@ fi
 exit 0
 `, mountName, vm.Mount.GuestPath)
 
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "bin/machina"), []byte(initScript), 0744)
+	err = os.WriteFile(filepath.Join(vm.config.Directories.Machines, vm.Name, "bin/machina"), []byte(initScript), 0744)
 	if err != nil {
 		return nil
 	}
 
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, vm.Name, "bin/machinarc"), []byte(vm.Scripts.Init), 0644)
+	err = os.WriteFile(filepath.Join(vm.config.Directories.Machines, vm.Name, "bin/machinarc"), []byte(vm.Scripts.Init), 0644)
 	if err != nil {
 		return nil
 	}
@@ -464,15 +458,13 @@ exit 0
 
 // Runs the initial scripts after the machine is created
 func (vm *Machine) RunInitScripts() error {
-	cfg := config.LoadConfig()
-
 	// Copies the scripts
 	command := "scp"
 	args := []string{
 		"-o", "StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PrivateKeyFilename)),
+		"-i", filepath.Join(vm.config.Directories.Machines, vm.Name, config.GetFilename(config.PrivateKeyFilename)),
 		"-r",
-		filepath.Join(cfg.Directories.Instances, vm.Name, "bin/"),
+		filepath.Join(vm.config.Directories.Machines, vm.Name, "bin/"),
 		fmt.Sprintf("%s@%s:/tmp/machina", vm.Credentials.Username, vm.Network.IPAddress),
 	}
 
@@ -486,7 +478,7 @@ func (vm *Machine) RunInitScripts() error {
 	command = "ssh"
 	args = []string{
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PrivateKeyFilename)),
+		"-i", filepath.Join(vm.config.Directories.Machines, vm.Name, config.GetFilename(config.PrivateKeyFilename)),
 		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
 		"/tmp/machina/install.sh",
 	}
@@ -497,16 +489,14 @@ func (vm *Machine) RunInitScripts() error {
 	}
 
 	// Cleanup
-	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, vm.Name, "bin"))
+	return os.RemoveAll(filepath.Join(vm.config.Directories.Machines, vm.Name, "bin"))
 }
 
 func (vm *Machine) Shell() error {
-	cfg := config.LoadConfig()
-
 	// Copies the init script into the VM
 	command := "ssh"
 	args := []string{
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PrivateKeyFilename)),
+		"-i", filepath.Join(vm.config.Directories.Machines, vm.Name, config.GetFilename(config.PrivateKeyFilename)),
 		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
 	}
 	cmd := exec.Command(command, args...)

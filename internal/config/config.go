@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -21,22 +20,22 @@ const (
 	PIDFilename
 )
 
-func GetFilename(name string, fn Filename) string {
+func GetFilename(fn Filename) string {
 	switch fn {
 	case NetworkFilename:
-		return fmt.Sprintf("%s-network.cfg", name)
+		return "network.cfg"
 	case UserdataFilename:
-		return fmt.Sprintf("%s-userdata.yaml", name)
+		return "userdata.yaml"
 	case PrivateKeyFilename:
-		return fmt.Sprintf("%s-id_rsa", name)
+		return "id_rsa"
 	case MachineFilename:
-		return fmt.Sprintf("%s-machine.yaml", name)
+		return "machine.yaml"
 	case SeedImageFilename:
-		return fmt.Sprintf("%s-seed.img", name)
+		return "seed.img"
 	case DiskFilename:
-		return fmt.Sprintf("%s-disk.img", name)
+		return "disk.img"
 	case PIDFilename:
-		return fmt.Sprintf("%s-vm.pid", name)
+		return "vm.pid"
 	}
 
 	return ""
@@ -44,13 +43,15 @@ func GetFilename(name string, fn Filename) string {
 
 type Config struct {
 	Hypervisor  string      `yaml:"hypervisor,omitempty"`
+	Instances   string      `yaml:"instances,omitempty"`
 	Connection  string      `yaml:"connection,omitempty"`
 	Directories Directories `yaml:"directories,omitempty"`
 }
 
 type Directories struct {
-	Images    string `yaml:"images,omitempty"`
-	Instances string `yaml:"instances,omitempty"`
+	Images   string `yaml:"images,omitempty"`
+	Machines string `yaml:"instances,omitempty"`
+	Clusters string `yaml:"clusters,omitempty"`
 }
 
 var (
@@ -59,7 +60,7 @@ var (
 )
 
 // LoadConfig loads the configuration from file or creates a new if it's not yet created
-func LoadConfig() *Config {
+func LoadConfig() (*Config, error) {
 	// User home directory path
 	home, _ := os.UserHomeDir()
 	// Config file path
@@ -70,8 +71,9 @@ func LoadConfig() *Config {
 		Hypervisor: getHypervisor(),
 		Connection: getConnection(),
 		Directories: Directories{
-			Images:    filepath.Join(home, baseDir, "images"),
-			Instances: filepath.Join(home, baseDir, "instances"),
+			Images:   filepath.Join(home, baseDir, "images"),
+			Machines: filepath.Join(home, baseDir, "instances/isolated"),
+			Clusters: filepath.Join(home, baseDir, "instances/clusters"),
 		},
 	}
 
@@ -80,10 +82,13 @@ func LoadConfig() *Config {
 		yamlData, _ := yaml.Marshal(cfg)
 		os.WriteFile(cfgFile, yamlData, 0644)
 	} else {
-		yaml.Unmarshal(cfgBytes, cfg)
+		err = yaml.Unmarshal(cfgBytes, cfg)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return cfg
+	return cfg, nil
 }
 
 func getHypervisor() string {

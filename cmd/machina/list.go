@@ -20,8 +20,11 @@ var listCommand = &cobra.Command{
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		cfg := config.LoadConfig()
-		dirs, _ := os.ReadDir(cfg.Directories.Instances)
+		cfg, err := config.LoadConfig()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error loading configuration")
+		}
+		dirs, _ := os.ReadDir(cfg.Directories.Machines)
 
 		// Create a new visual table and set the header titles
 		table := simpletable.New()

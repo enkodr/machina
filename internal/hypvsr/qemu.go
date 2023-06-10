@@ -18,8 +18,11 @@ func (h *Qemu) Create(vm *Machine) error {
 
 func (h *Qemu) Start(vm *Machine) error {
 	command := "qemu-system-x86_64"
-	cfg := config.LoadConfig()
-	dir := filepath.Join(cfg.Directories.Instances, vm.Name)
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
+	dir := filepath.Join(cfg.Directories.Machines, vm.Name)
 	args := []string{
 		"-machine", fmt.Sprintf("accel=%s,type=q35", getHypervisor()),
 		"-cpu", "host",
@@ -44,7 +47,7 @@ func (h *Qemu) Start(vm *Machine) error {
 	}
 	args = append(args, mountCommand...)
 	cmd := exec.Command(command, args...)
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return err
 	}
@@ -53,16 +56,19 @@ func (h *Qemu) Start(vm *Machine) error {
 }
 
 func (h *Qemu) Stop(vm *Machine) error {
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
 	command := "ssh"
 	args := []string{
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PrivateKeyFilename)),
+		"-i", filepath.Join(cfg.Directories.Machines, vm.Name, config.GetFilename(config.PrivateKeyFilename)),
 		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
 		"sudo", "shutdown", "now",
 	}
 	cmd := exec.Command(command, args...)
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		return err
 	}
@@ -86,15 +92,21 @@ func (h *Qemu) ForceStop(vm *Machine) error {
 }
 
 func (h *Qemu) Status(vm *Machine) (string, error) {
-	cfg := config.LoadConfig()
-	if _, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PIDFilename))); os.IsNotExist(err) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(filepath.Join(cfg.Directories.Machines, vm.Name, config.GetFilename(config.PIDFilename))); os.IsNotExist(err) {
 		return "shut off", nil
 	}
 	return "running", nil
 }
 
 func (h *Qemu) Delete(vm *Machine) error {
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
 
 	status, _ := h.Status(vm)
 	if status == "running" {
@@ -107,12 +119,12 @@ func (h *Qemu) Delete(vm *Machine) error {
 		vm.Network.IPAddress,
 	}
 	cmd := exec.Command(command, args...)
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return err
 	}
 
-	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, vm.Name))
+	return os.RemoveAll(filepath.Join(cfg.Directories.Machines, vm.Name))
 }
 
 // Get Hypervisor driver
@@ -127,7 +139,10 @@ func getHypervisor() string {
 }
 
 func (h *Qemu) getPID(vm *Machine) string {
-	cfg := config.LoadConfig()
-	data, _ := os.ReadFile(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(vm.Name, config.PIDFilename)))
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return "err"
+	}
+	data, _ := os.ReadFile(filepath.Join(cfg.Directories.Machines, vm.Name, config.GetFilename(config.PIDFilename)))
 	return string(data)
 }
