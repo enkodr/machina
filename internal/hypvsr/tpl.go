@@ -16,8 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// var endpoint = "https://raw.githubusercontent.com/enkodr/machina/main/templates"
-var endpoint = "https://raw.githubusercontent.com/enkodr/machina/cluster-implementation/templates"
+var endpoint = "https://raw.githubusercontent.com/enkodr/machina/main/templates"
 
 type Templater interface {
 	Load() (KindManager, error)
