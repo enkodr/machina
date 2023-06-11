@@ -45,7 +45,7 @@ var createCommand = &cobra.Command{
 		fmt.Printf("Creating necessary files\n")
 		err = vm.CreateDir()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Machine already exists\n")
+			fmt.Fprintf(os.Stderr, "Instance already exists\n")
 			os.Exit(1)
 		}
 		err = vm.Prepare()

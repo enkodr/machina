@@ -16,7 +16,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var endpoint = "https://raw.githubusercontent.com/enkodr/machina/main/templates"
+// var endpoint = "https://raw.githubusercontent.com/enkodr/machina/main/templates"
+var endpoint = "https://raw.githubusercontent.com/enkodr/machina/cluster-implementation/templates"
 
 type Templater interface {
 	Load() (KindManager, error)
@@ -96,9 +97,7 @@ func Load(name string) (KindManager, error) {
 	var km KindManager
 	switch k.Kind {
 	case "Machine":
-		km = &Machine{
-			config: cfg,
-		}
+		km = &Machine{}
 		// Unmarshal the Machine
 		err = yaml.Unmarshal(data, km)
 		if err != nil {
@@ -106,9 +105,7 @@ func Load(name string) (KindManager, error) {
 		}
 		break
 	case "Cluster":
-		km = &Cluster{
-			config: cfg,
-		}
+		km = &Cluster{}
 		// Unmarshal the Machine
 		err = yaml.Unmarshal(data, km)
 		if err != nil {
@@ -143,7 +140,8 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 		if err != nil {
 			return nil, err
 		}
-		vm.config = cfg
+		vm.baseDir = cfg.Directories.Machines
+
 		return vm, nil
 	case "Cluster":
 		c := &Cluster{}
@@ -151,10 +149,26 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 		if err != nil {
 			return nil, err
 		}
-		for _, vm := range c.Machines {
-			vm.extend()
+		c.baseDir = filepath.Join(cfg.Directories.Clusters, c.Name)
+		expandedMachines := []Machine{}
+		for _, machine := range c.Machines {
+			machine.extend()
+
+			if machine.Replicas == 0 {
+				machine.Replicas = 1
+			}
+			for i := 0; i < machine.Replicas; i++ {
+				copiedMachine := machine
+
+				if machine.Replicas > 1 {
+					copiedMachine.Name = fmt.Sprintf("%s-%d", copiedMachine.Name, i+1)
+				}
+				copiedMachine.baseDir = c.baseDir
+				expandedMachines = append(expandedMachines, copiedMachine)
+			}
 		}
-		c.config = cfg
+		c.Machines = expandedMachines
+
 		return c, nil
 	}
 
