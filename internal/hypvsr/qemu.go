@@ -22,7 +22,7 @@ func (h *Qemu) Start(vm *Machine) error {
 	if err != nil {
 		return err
 	}
-	dir := filepath.Join(cfg.Directories.Machines, vm.Name)
+	dir := filepath.Join(cfg.Directories.Instances, vm.Name)
 	args := []string{
 		"-machine", fmt.Sprintf("accel=%s,type=q35", getHypervisor()),
 		"-cpu", "host",
@@ -63,7 +63,7 @@ func (h *Qemu) Stop(vm *Machine) error {
 	command := "ssh"
 	args := []string{
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Machines, vm.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(config.PrivateKeyFilename)),
 		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
 		"sudo", "shutdown", "now",
 	}
@@ -96,7 +96,7 @@ func (h *Qemu) Status(vm *Machine) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, err := os.Stat(filepath.Join(cfg.Directories.Machines, vm.Name, config.GetFilename(config.PIDFilename))); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(config.PIDFilename))); os.IsNotExist(err) {
 		return "shut off", nil
 	}
 	return "running", nil
@@ -124,7 +124,7 @@ func (h *Qemu) Delete(vm *Machine) error {
 		return err
 	}
 
-	return os.RemoveAll(filepath.Join(cfg.Directories.Machines, vm.Name))
+	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, vm.Name))
 }
 
 // Get Hypervisor driver
@@ -143,6 +143,6 @@ func (h *Qemu) getPID(vm *Machine) string {
 	if err != nil {
 		return "err"
 	}
-	data, _ := os.ReadFile(filepath.Join(cfg.Directories.Machines, vm.Name, config.GetFilename(config.PIDFilename)))
+	data, _ := os.ReadFile(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(config.PIDFilename)))
 	return string(data)
 }

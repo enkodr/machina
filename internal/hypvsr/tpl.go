@@ -18,60 +18,83 @@ import (
 
 var endpoint = "https://raw.githubusercontent.com/enkodr/machina/main/templates"
 
+// Templater is an interface for loading different types of templates
 type Templater interface {
+	// Load method is responsible for loading the template
+	// and returning an instance of KindManager and error if any occurs during the loading
 	Load() (KindManager, error)
 }
 
+// LocalTemplate represents a local file-based template
 type LocalTemplate struct {
-	path string
-	name string
+	path string // path is the file system path to the local template
+	name string // name is the name of the local template
 }
+
+// RemoteTemplate represents a template that needs to be fetched from a remote source
 type RemoteTemplate struct {
-	name string
+	name string // name is the name of the remote template
 }
 
+// kind is a struct that represents the kind field in a yaml file
 type kind struct {
-	Kind string `yaml:"kind"`
+	Kind string `yaml:"kind"` // Kind is the kind field in a yaml file
 }
 
+// NewTemplate is a factory function that returns an instance of Templater.
+// It determines the type of Templater (LocalTemplate or RemoteTemplate)
+// based on whether a file with the given name exists on the local file system.
 func NewTemplate(name string) Templater {
+	// Check if the passed argument name is a path to an existing file
 	if _, err := os.Stat(name); os.IsNotExist(err) {
+		// If the file does not exist, assume it is a remote template
 		return &RemoteTemplate{name: name}
 	} else {
+		// If the file does exist, assume it is a local template
 		return &LocalTemplate{path: name}
 	}
 }
 
+// Load is a method on the LocalTemplate struct that implements the Templater interface.
+// It reads the content of the template from the local file system, parses it, and returns a corresponding KindManager.
 func (f *LocalTemplate) Load() (KindManager, error) {
-	// Get the template content
+	// Reads the file named by filename and returns the contents
 	tpl, err := os.ReadFile(f.path)
-
 	if err != nil {
 		return nil, err
 	}
 
-	// Parse the YAML to struct
+	// Call the template parser
+	// If parsing the template content returns an error, it is propagated up
 	vm, err := parseTemplate(tpl)
 	if err != nil {
 		return nil, err
 	}
+
+	// If there's no error, return the KindManager and a nil error
 	return vm, nil
 }
 
+// Load is a method on the RemoteTemplate struct that implements the Templater interface.
+// It reads the content of the template from the local file system, parses it, and returns a corresponding KindManager.
 func (f *RemoteTemplate) Load() (KindManager, error) {
-	// Get the template content
+	// Set the URL from where to download the file
 	tplFile := fmt.Sprintf("%s/%s.yaml", endpoint, f.name)
+
+	// Dowload the template file from the remote endpoint
 	tpl, err := netutil.Download(tplFile)
 	if err != nil {
 		return nil, err
 	}
 
-	// Parse the YAML to struct
+	// Call the template parser
+	// If parsing the template content returns an error, it is propagated up
 	vm, err := parseTemplate(tpl)
 	if err != nil {
 		return nil, err
 	}
 
+	// If there's no error, return the KindManager and a nil error
 	return vm, nil
 }
 
@@ -84,7 +107,7 @@ func Load(name string) (KindManager, error) {
 	}
 
 	// Reads the YAML file
-	data, err := os.ReadFile(filepath.Join(cfg.Directories.Machines, name, config.GetFilename(config.MachineFilename)))
+	data, err := os.ReadFile(filepath.Join(cfg.Directories.Instances, name, config.GetFilename(config.InstanceFilename)))
 
 	// Loads the YAML to identify the km
 	var k kind
@@ -139,7 +162,7 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 		if err != nil {
 			return nil, err
 		}
-		vm.baseDir = cfg.Directories.Machines
+		vm.baseDir = cfg.Directories.Instances
 
 		return vm, nil
 	case "Cluster":
@@ -150,7 +173,7 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 		}
 		c.baseDir = filepath.Join(cfg.Directories.Clusters, c.Name)
 		expandedMachines := []Machine{}
-		for _, machine := range c.Machines {
+		for _, machine := range c.Instances {
 			machine.extend()
 
 			if machine.Replicas == 0 {
@@ -166,7 +189,7 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 				expandedMachines = append(expandedMachines, copiedMachine)
 			}
 		}
-		c.Machines = expandedMachines
+		c.Instances = expandedMachines
 
 		return c, nil
 	}

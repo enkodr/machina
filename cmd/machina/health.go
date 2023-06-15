@@ -12,7 +12,7 @@ import (
 
 var healthCommand = &cobra.Command{
 	Use:   "health",
-	Short: "Checks if the application is able to run the machines",
+	Short: "Checks if the application is able to run the instances",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Format the output to show as table
 
@@ -21,6 +21,8 @@ var healthCommand = &cobra.Command{
 		fmt.Printf("Checking if dependencies are installed...\n")
 
 		var deps []string
+
+		// Identify the OS and define the dependencies per OS
 		if runtime.GOOS == "linux" {
 			// Dependencies for Linux
 			deps = []string{

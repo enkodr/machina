@@ -14,7 +14,7 @@ const (
 	NetworkFilename Filename = iota
 	UserdataFilename
 	PrivateKeyFilename
-	MachineFilename
+	InstanceFilename
 	SeedImageFilename
 	DiskFilename
 	PIDFilename
@@ -28,8 +28,8 @@ func GetFilename(fn Filename) string {
 		return "userdata.yaml"
 	case PrivateKeyFilename:
 		return "id_rsa"
-	case MachineFilename:
-		return "machine.yaml"
+	case InstanceFilename:
+		return "instance.yaml"
 	case SeedImageFilename:
 		return "seed.img"
 	case DiskFilename:
@@ -49,9 +49,9 @@ type Config struct {
 }
 
 type Directories struct {
-	Images   string `yaml:"images,omitempty"`
-	Machines string `yaml:"instances,omitempty"`
-	Clusters string `yaml:"clusters,omitempty"`
+	Images    string `yaml:"images,omitempty"`
+	Instances string `yaml:"instances,omitempty"`
+	Clusters  string `yaml:"clusters,omitempty"`
 }
 
 var (
@@ -71,9 +71,9 @@ func LoadConfig() (*Config, error) {
 		Hypervisor: getHypervisor(),
 		Connection: getConnection(),
 		Directories: Directories{
-			Images:   filepath.Join(home, baseDir, "images"),
-			Machines: filepath.Join(home, baseDir, "instances/isolated"),
-			Clusters: filepath.Join(home, baseDir, "instances/clusters"),
+			Images:    filepath.Join(home, baseDir, "images"),
+			Instances: filepath.Join(home, baseDir, "instances/isolated"),
+			Clusters:  filepath.Join(home, baseDir, "instances/clusters"),
 		},
 	}
 

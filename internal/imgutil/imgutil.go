@@ -17,7 +17,7 @@ func EnsureDirectories() error {
 	}
 
 	osutil.MkDir(cfg.Directories.Images)
-	osutil.MkDir(filepath.Join(cfg.Directories.Machines))
+	osutil.MkDir(filepath.Join(cfg.Directories.Instances))
 	osutil.MkDir(filepath.Join(cfg.Directories.Clusters))
 
 	return nil

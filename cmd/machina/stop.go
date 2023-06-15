@@ -14,28 +14,28 @@ var (
 
 var stopCommand = &cobra.Command{
 	Use:   "stop",
-	Short: "Stops a running machine",
+	Short: "Stops a running instance",
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateName(cmd, args)
 	},
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Load the machine data
-		machine, err := hypvsr.Load(name)
+		// Load the instance data
+		instance, err := hypvsr.Load(name)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Machine %q doesn't exist\n", name)
+			fmt.Fprintf(os.Stderr, "Instance %q doesn't exist\n", name)
 			os.Exit(1)
 		}
 
-		// Start the machine
-		fmt.Printf("Stoping machine '%s'\n", name)
+		// Stop the instance
+		fmt.Printf("Stoping instance '%s'\n", name)
 		if force {
-			err = machine.ForceStop()
+			err = instance.ForceStop()
 		} else {
-			err = machine.Stop()
+			err = instance.Stop()
 		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error stoping the machine information\n")
+			fmt.Fprintf(os.Stderr, "Error stoping the instance information\n")
 			os.Exit(1)
 		}
 

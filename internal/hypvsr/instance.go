@@ -144,7 +144,7 @@ func (vm *Machine) Prepare() error {
 		return err
 	}
 
-	err = os.WriteFile(filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.MachineFilename)), vmYaml, 0644)
+	err = os.WriteFile(filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.InstanceFilename)), vmYaml, 0644)
 	if err != nil {
 		return err
 	}

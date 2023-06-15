@@ -59,6 +59,7 @@ func NewInstance(name string) (KindManager, error) {
 	return kind, nil
 }
 
+// convertMemory is a function that converts the template memory to a value used by the hypervisor
 func convertMemory(memory string) (string, error) {
 	ram := memory
 	if memory[len(memory)-1] == 'G' {

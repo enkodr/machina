@@ -11,6 +11,7 @@ import (
 	"github.com/enkodr/machina/internal/config"
 )
 
+// Hypervisor is an interface for interacting with the hypervisor
 type Hypervisor interface {
 	Create(vm *Machine) error
 	Start(vm *Machine) error
@@ -20,18 +21,26 @@ type Hypervisor interface {
 	Delete(vm *Machine) error
 }
 
+// Libvirt is a struct that represents the libvirt hypervisor
 type Libvirt struct{}
 
+// Create is a method for the libvirt hypervisor that creates an instance
 func (h *Libvirt) Create(vm *Machine) error {
+	// Loads the software configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return err
 	}
+	// Define the command to be executed
 	command := "virt-install"
+
+	// Validate and convert the memory
 	ram, err := convertMemory(vm.Resources.Memory)
 	if err != nil {
 		return errors.New("invalid memory")
 	}
+
+	// Define the arguments for the execution of the command
 	args := []string{
 		"--connect", cfg.Connection,
 		"--virt-type", "kvm",
@@ -39,8 +48,8 @@ func (h *Libvirt) Create(vm *Machine) error {
 		"--ram", ram,
 		fmt.Sprintf("--vcpus=%s", vm.Resources.CPUs),
 		"--os-variant", vm.Variant,
-		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Machines, vm.Name, config.GetFilename(config.DiskFilename))),
-		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Machines, vm.Name, config.GetFilename(config.SeedImageFilename))),
+		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(config.DiskFilename))),
+		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(config.SeedImageFilename))),
 		"--import",
 		"--network", fmt.Sprintf("bridge=virbr0,model=virtio,mac=%s", vm.Network.MacAddress),
 		"--noautoconsole",
@@ -56,11 +65,13 @@ func (h *Libvirt) Create(vm *Machine) error {
 	}
 	args = append(args, mountCommand...)
 
-	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Machines, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	// Logs the output of the command into the instance logfile
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer logFile.Close()
+
+	// Execute the command
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = logFile
-
 	err = cmd.Start()
 	if err != nil {
 		return err
@@ -68,22 +79,31 @@ func (h *Libvirt) Create(vm *Machine) error {
 	return err
 }
 
+// Start is a method for the libvirt hypervisor that starts a stopped instance
 func (h *Libvirt) Start(vm *Machine) error {
+	// Loads the software configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return err
 	}
+
+	// Define the command to be executed
 	command := "virsh"
+
+	// Define the arguments for the execution of the command
 	args := []string{
 		"--connect", cfg.Connection,
 		"start",
 		vm.Name,
 	}
-	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Machines, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+
+	// Logs the output of the command into the instance logfile
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer logFile.Close()
+
+	// Execute the command
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = logFile
-
 	err = cmd.Start()
 	if err != nil {
 		return err
@@ -91,23 +111,31 @@ func (h *Libvirt) Start(vm *Machine) error {
 	return nil
 }
 
+// Start is a method for the libvirt hypervisor that stops a running instance
 func (h *Libvirt) Stop(vm *Machine) error {
+	// Loads the software configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return err
 	}
+
+	// Define the command to be executed
 	command := "virsh"
+
+	// Define the arguments for the execution of the command
 	args := []string{
 		"--connect", cfg.Connection,
 		"shutdown",
 		vm.Name,
 	}
 
-	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Machines, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	// Logs the output of the command into the instance logfile
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer logFile.Close()
+
+	// Execute the command
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = logFile
-
 	err = cmd.Start()
 	if err != nil {
 		return err
@@ -115,23 +143,31 @@ func (h *Libvirt) Stop(vm *Machine) error {
 	return err
 }
 
+// ForceStop is a method for the libvirt hypervisor that force stops a running/stuck instance
 func (h *Libvirt) ForceStop(vm *Machine) error {
+	// Loads the software configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return err
 	}
+
+	// Define the command to be executed
 	command := "virsh"
+
+	// Define the arguments for the execution of the command
 	args := []string{
 		"--connect", cfg.Connection,
 		"destroy",
 		vm.Name,
 	}
 
-	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Machines, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	// Logs the output of the command into the instance logfile
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer logFile.Close()
+
+	// Execute the command
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = logFile
-
 	err = cmd.Start()
 	if err != nil {
 		return err
@@ -139,20 +175,28 @@ func (h *Libvirt) ForceStop(vm *Machine) error {
 	return err
 }
 
+// Status is a method for the libvirt hypervisor that gets the status of an instance
 func (h *Libvirt) Status(vm *Machine) (string, error) {
+	// Loads the software configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return "", err
 	}
+
+	// Define the command to be executed
 	command := "virsh"
+
+	// Define the arguments for the execution of the command
 	args := []string{
 		"--connect", cfg.Connection,
 		"domstate",
 		vm.Name,
 	}
 
+	// Execute the command
 	cmd := exec.Command(command, args...)
 
+	// Runs the command and gets the combined outpu
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", err
@@ -161,72 +205,97 @@ func (h *Libvirt) Status(vm *Machine) (string, error) {
 	return strOutput, nil
 }
 
+// Delete is a method for the libvirt hypervisor that deletes a created instance
 func (h *Libvirt) Delete(vm *Machine) error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return err
 	}
+
+	// Define the command to be executed
 	command := "virsh"
+
+	// Define the arguments for the execution of the command to destroy the instance
 	args := []string{
 		"--connect", cfg.Connection,
 		"destroy",
 		vm.Name,
 	}
 
-	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Machines, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	// Logs the output of the command into the instance logfile
+	logFile, _ := os.OpenFile(filepath.Join(cfg.Directories.Instances, vm.Name, "output.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer logFile.Close()
+
+	// Execute the command
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = logFile
-
 	err = cmd.Start()
 	if err != nil {
 		return err
 	}
 
+	// Define the arguments for the execution of the command to undefine the instance
 	args = []string{
 		"--connect", cfg.Connection,
 		"undefine",
 		vm.Name,
 	}
+
+	// Execute the command
 	cmd = exec.Command(command, args...)
+	cmd.Stdout = logFile
 	err = cmd.Start()
 	if err != nil {
 		return err
 	}
 
+	// Define the arguments for the execution of the command to destroy the pool of the instance
 	args = []string{
 		"--connect", cfg.Connection,
 		"pool-destroy",
 		vm.Name,
 	}
+
+	// Execute the command
 	cmd = exec.Command(command, args...)
+	cmd.Stdout = logFile
 	err = cmd.Start()
 	if err != nil {
 		return err
 	}
 
+	// Define the arguments for the execution of the command to undefine the pool of the instance
 	args = []string{
 		"--connect", cfg.Connection,
 		"pool-undefine",
 		vm.Name,
 	}
+
+	// Execute the command
 	cmd = exec.Command(command, args...)
+	cmd.Stdout = logFile
 	err = cmd.Start()
 	if err != nil {
 		return err
 	}
 
+	// Define the command to be executed
 	command = "ssh-keygen"
+
+	// Define the arguments for the execution of the command to undefine the pool of the instance
 	args = []string{
 		"-R",
 		vm.Network.IPAddress,
 	}
+
+	// Define the arguments for the execution of the command to remove the key from the SSH allowed machines
 	cmd = exec.Command(command, args...)
 	err = cmd.Start()
 	if err != nil {
 		return err
 	}
 
-	return os.RemoveAll(filepath.Join(cfg.Directories.Machines, vm.Name))
+	// Delete the instance directory
+	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, vm.Name))
 
 }

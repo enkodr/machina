@@ -15,15 +15,15 @@ var copyCommand = &cobra.Command{
 	Aliases:           []string{"cp"},
 	ValidArgsFunction: bashCompleteInstanceNamesConnection,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Load the machine data
+		// Load the instance data
 		if len(args) > 0 {
 			name = args[0]
 		}
 
 		// Check if all required arguments are passed
 		if len(args) != 2 {
-			fmt.Printf("machina copy <host_path> <machine_name>:<machine_path>\n")
-			fmt.Printf("machina copy <machine_name>:<machine_path> <host_path>\n")
+			fmt.Printf("machina copy <host_path> <instance_name>:<instance_path>\n")
+			fmt.Printf("machina copy <instance_name>:<instance_path> <host_path>\n")
 			os.Exit(0)
 		}
 
@@ -40,16 +40,16 @@ var copyCommand = &cobra.Command{
 			name = strings.Split(dest, ":")[0]
 		}
 
-		// Get the vm from the configuration file
-		vm, err := hypvsr.Load(name)
+		// Get the instance from the configuration file
+		instance, err := hypvsr.Load(name)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Machine %q does not exist\n", name)
+			fmt.Fprintf(os.Stderr, "Instance %q does not exist\n", name)
 			os.Exit(1)
 		}
 
 		// Copy the content from origin to destination
 		fmt.Printf("Copying content...\n")
-		err = vm.CopyContent(origin, dest)
+		err = instance.CopyContent(origin, dest)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error copying content\n")
 			os.Exit(1)

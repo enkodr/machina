@@ -18,7 +18,7 @@ var templateCommand = &cobra.Command{
 	},
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Load the machine data
+		// Load the instance data
 
 		// Check if a template name was passed
 		if len(args) == 1 {
@@ -36,6 +36,7 @@ var templateCommand = &cobra.Command{
 					{Align: simpletable.AlignCenter, Text: "TEMPLATE NAME"},
 				},
 			}
+			// Get the template list
 			tpls := hypvsr.GetTemplateList()
 
 			for _, tpl := range tpls {

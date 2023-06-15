@@ -18,76 +18,80 @@ var (
 // Creates a new VM
 var createCommand = &cobra.Command{
 	Use:     "create",
-	Short:   "Creates a new machine",
+	Short:   "Creates a new instance",
 	Aliases: []string{"new"},
 	Run: func(cmd *cobra.Command, args []string) {
 		name = "default"
 
-		// Check the passed parameters
+		// Evaluate the passed parameters to determine the template name
 		switch {
-		// Get the template name to load from the first argument, if passed
+		// If exactly one argument has been provided, it is assumed to be the name of the template.
+		// Hence, assign this first argument to the variable 'name'.
 		case len(args) == 1:
 			name = args[0]
-		// Get the filename from the file parameter
+		// If the 'file' parameter is not an empty string, it is considered to be the filename from which the template should be loaded.
+		// Therefore, assign the 'file' parameter value to the variable 'name'.
 		case file != "":
 			name = file
 		}
 
-		// Create a new VM
-		fmt.Printf("Creating machine\n")
-		vm, err := hypvsr.NewInstance(name)
+		fmt.Printf("Creating instance\n")
+		// Call the NewInstance function of the hypvsr package to create a new instance instance with the given name.
+		// The function returns a reference to the new instance instance and any error that may have occurred.
+		instance, err := hypvsr.NewInstance(name)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating machine\n")
+			fmt.Fprintf(os.Stderr, "Error creating instance\n")
 			os.Exit(1)
 		}
 
-		// Prepare necessary files for machine creation
 		fmt.Printf("Creating necessary files\n")
-		err = vm.CreateDir()
+		// Call the CreateDir method that will create the directory where the instance will be created
+		err = instance.CreateDir()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Instance already exists\n")
 			os.Exit(1)
 		}
-		err = vm.Prepare()
+		// Call the Prepare method that will create all the necessary files needed for the instance to work
+		err = instance.Prepare()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating files\n")
 			os.Exit(1)
 		}
 
-		// Download the distro image used for the machine
 		fmt.Printf("Downloading image\n")
-		err = vm.DownloadImage()
+		// Call the DownloadImage method that will download the distro image needed to boot the instance
+		err = instance.DownloadImage()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error downoading image\n")
 			os.Exit(1)
 		}
 
-		// Create boot and seed disks necessary for the machine to boot
+		// Call the CreateDisks methiod that will create boot and seed disks necessary for the instance to boot
 		fmt.Printf("Create boot and seed disks\n")
-		err = vm.CreateDisks()
+		err = instance.CreateDisks()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating boot and seed disks\n")
 			os.Exit(1)
 		}
 
-		// Create and start the VM
 		fmt.Printf("Create and start the VM\n")
-		err = vm.Create()
+		// Call the Create method that will create and start the instance
+		err = instance.Create()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating machine\n")
+			fmt.Fprintf(os.Stderr, "Error creating instance\n")
 			os.Exit(1)
 		}
 
-		// Wait until the VM reaches running state
-		fmt.Printf("Waiting for the machine to become ready\n")
-		err = vm.Wait()
+		fmt.Printf("Waiting for the instance to become ready\n")
+		// Call the Wait methid that will wait until the VM reaches running state
+		err = instance.Wait()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "The machine appears to be stuck in a starting state\n")
+			fmt.Fprintf(os.Stderr, "The instance appears to be stuck in a starting state\n")
 		}
 
-		// run installation scripts
 		fmt.Printf("Running install scripts\n")
-		err = vm.RunInitScripts()
+		// Call the RunInitScripts method that will run the initial scripts defined on the template
+		err = instance.RunInitScripts()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error running install scripts\n")
 			os.Exit(1)
@@ -98,10 +102,10 @@ var createCommand = &cobra.Command{
 }
 
 func init() {
-	createCommand.PersistentFlags().StringVarP(&file, "file", "f", "", "path to the file to use to create the machine")
-	createCommand.PersistentFlags().StringVarP(&newName, "name", "n", "", "specify the name of the machine")
-	createCommand.PersistentFlags().StringVarP(&newCPUs, "cpus", "c", "", "specify the amount of CPUs of the machine (e.g. 2)")
-	createCommand.PersistentFlags().StringVarP(&newMem, "mem", "m", "", "specify the amount of memory of the machine (e.g 4G)")
-	createCommand.PersistentFlags().StringVarP(&newDisk, "disk", "d", "", "specify the size of the disk of the machine (e.g. 100G)")
+	createCommand.PersistentFlags().StringVarP(&file, "file", "f", "", "path to the file to use to create the instance")
+	createCommand.PersistentFlags().StringVarP(&newName, "name", "n", "", "specify the name of the instance")
+	createCommand.PersistentFlags().StringVarP(&newCPUs, "cpus", "c", "", "specify the amount of CPUs of the instance (e.g. 2)")
+	createCommand.PersistentFlags().StringVarP(&newMem, "mem", "m", "", "specify the amount of memory of the instance (e.g 4G)")
+	createCommand.PersistentFlags().StringVarP(&newDisk, "disk", "d", "", "specify the size of the disk of the instance (e.g. 100G)")
 	rootCommand.AddCommand(createCommand)
 }

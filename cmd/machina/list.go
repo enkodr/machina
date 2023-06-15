@@ -2,6 +2,7 @@ package machina
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/alexeyco/simpletable"
@@ -12,7 +13,7 @@ import (
 
 var listCommand = &cobra.Command{
 	Use:     "list",
-	Short:   "Lists all created machines",
+	Short:   "Lists all created instances",
 	Aliases: []string{"ls"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateName(cmd, args)
@@ -20,11 +21,20 @@ var listCommand = &cobra.Command{
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 
+		// Load the application configuration
 		cfg, err := config.LoadConfig()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error loading configuration")
 		}
-		dirs, _ := os.ReadDir(cfg.Directories.Machines)
+
+		var instances []fs.DirEntry
+		// Get's a list of all the instances created
+		dirs, _ := os.ReadDir(cfg.Directories.Instances)
+		instances = append(instances, dirs...)
+
+		// Get's a list of all the instances on all the created clusters
+		dirs, _ = os.ReadDir(cfg.Directories.Clusters)
+		instances = append(instances, dirs...)
 
 		// Create a new visual table and set the header titles
 		table := simpletable.New()
@@ -42,8 +52,8 @@ var listCommand = &cobra.Command{
 		}
 
 		// Add the content for all the rows
-		for _, dir := range dirs {
-			kind, _ := hypvsr.Load(dir.Name())
+		for _, instance := range instances {
+			kind, _ := hypvsr.Load(instance.Name())
 			vms := kind.GetVMs()
 			for _, vm := range vms {
 				status, err := vm.Status()
