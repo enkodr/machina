@@ -23,7 +23,7 @@ type KindManager interface {
 	Wait() error                      // Wait waits until the instance is ready to use.
 	Shell() error                     // Shell provides an interactive shell to the instance.
 	RunInitScripts() error            // RunInitScripts runs initialization scripts on the instance.
-	GetVMs() []Machine                // GetVMs returns a slice of Machine that represents the VMs under management.
+	GetVMs() []Instance               // GetVMs returns a slice of Machine that represents the VMs under management.
 	CreateDir() error                 // CreateDir creates a necessary directory for the instance.
 }
 

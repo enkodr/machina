@@ -8,9 +8,9 @@ import (
 // Cluster holds the configuration details for a cluster of machines
 type Cluster struct {
 	baseDir   string
-	Kind      string    `yaml:"kind"`     // Kind of the resource, should be 'Cluster'
-	Name      string    `yaml:"name"`     // Name of the cluster. Must be unique in the system
-	Instances []Machine `yaml:"machines"` // List of machines in the cluster
+	Kind      string     `yaml:"kind"`     // Kind of the resource, should be 'Cluster'
+	Name      string     `yaml:"name"`     // Name of the cluster. Must be unique in the system
+	Instances []Instance `yaml:"machines"` // List of machines in the cluster
 }
 
 // CreateDir method creates the directory where the instance files will be stored
@@ -164,6 +164,6 @@ func (c *Cluster) Shell() error {
 }
 
 // GetVMs method calls the GetVMs method for each instance
-func (c *Cluster) GetVMs() []Machine {
+func (c *Cluster) GetVMs() []Instance {
 	return c.Instances
 }

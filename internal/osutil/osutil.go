@@ -6,8 +6,27 @@ import (
 	"encoding/hex"
 	"hash"
 	"os"
+	"os/exec"
 	"strings"
 )
+
+// Runner is an interface that defines the behavior of the command runner.
+type Runner interface {
+	RunCommand(command string, args []string) (string, error)
+}
+
+// CommandRunner is the implementation of the Runner interface that runs OS commands.
+type CommandRunner struct{}
+
+// RunCommand runs the given OS command and returns the output as a string.
+func (c CommandRunner) RunCommand(command string, args []string) (string, error) {
+	cmd := exec.Command(command, args...)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(output), nil
+}
 
 // Checksum checks if the checksum of a file matches the specified checksum
 func Checksum(path, checksum string) bool {

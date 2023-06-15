@@ -20,7 +20,7 @@ func TestMachine_CreateDir(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	// Initialize a Machine instance for testing
-	vm := Machine{
+	vm := Instance{
 		baseDir: tmpDir,
 		Name:    "test-machine",
 	}
@@ -40,7 +40,7 @@ func TestMachine_Prepare(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// Initialize a Machine instance for testing
-	vm := Machine{
+	vm := Instance{
 		Name:    "test-machine",
 		baseDir: tempDir,
 		Credentials: Credentials{
@@ -100,7 +100,7 @@ func TestMachine_DownloadImage(t *testing.T) {
 	}
 
 	// Initialize a Machine instance for testing
-	vm := Machine{
+	vm := Instance{
 		Image: Image{
 			URL:      fmt.Sprintf("%s/file.txt", mockServer.URL),
 			Checksum: checksum,
@@ -123,4 +123,95 @@ func TestMachine_DownloadImage(t *testing.T) {
 
 	// Close the mock server
 	mockServer.Close()
+}
+
+// MockCreateDiskRunner is a mock implementation of the Runner interface using the testify/mock package.
+
+// MockRunner is a mock implementation of the Runner interface.
+type MockRunner struct {
+	Command string
+	Args    []string
+	Output  string
+	Error   error
+	Called  bool
+}
+
+// RunCommand is the implementation of the Runner interface for the mock.
+func (m *MockRunner) RunCommand(command string, args []string) (string, error) {
+	m.Called = true
+	m.Command = command
+	m.Args = args
+	return m.Output, m.Error
+}
+func TestCreateInstanceDisk(t *testing.T) {
+	// Create a temporary directory for testing
+	tmpDir := t.TempDir()
+	defer os.RemoveAll(tmpDir)
+
+	// Create a test image file
+	fileContent := []byte("mock image content")
+	imagePath := filepath.Join(tmpDir, "image.img")
+	os.WriteFile(imagePath, fileContent, 0644)
+
+	// Create an instance of your struct
+	instance := &Instance{
+		Image: Image{
+			URL: imagePath,
+		},
+		Runner:  &MockRunner{},
+		baseDir: filepath.Join(tmpDir, "test-machine"),
+		Resources: Resources{
+			Disk: "10G",
+		},
+	}
+
+	cfg = &config.Config{
+		Directories: config.Directories{
+			Images: tmpDir,
+		},
+	}
+
+	err := instance.createInstanceDisk()
+
+	// Verify the first RunCommand call to create the disk
+	mockRunner := instance.Runner.(*MockRunner)
+	expectedCommand := "qemu-img"
+	expectedArgs := []string{
+		"create",
+		"-F", "qcow2",
+		"-b", imagePath,
+		"-f", "qcow2", filepath.Join(tmpDir, "test-machine", "disk.img"),
+		"10G",
+	}
+	assert.True(t, mockRunner.Called, "RunCommand should have been called")
+	assert.Equal(t, expectedCommand, mockRunner.Command, "Unexpected command")
+	assert.Equal(t, expectedArgs, mockRunner.Args, "Unexpected arguments")
+	assert.NoError(t, err, "Unexpected error")
+}
+
+func TestCreateSeedDisk(t *testing.T) {
+	// Create a temporary directory for testing
+	tmpDir := t.TempDir()
+	defer os.RemoveAll(tmpDir)
+
+	// Create an instance of your struct
+	instance := &Instance{
+		Runner: &MockRunner{},
+		// Set other necessary fields for the test
+	}
+
+	err := instance.createSeedDisk()
+
+	// Verify the RunCommand call to create the seed disk
+	mockRunner := instance.Runner.(*MockRunner)
+	expectedCommand := "cloud-localds"
+	expectedArgs := []string{
+		"--network-config=network.cfg",
+		"seed.img",
+		"userdata.yaml",
+	}
+	assert.True(t, mockRunner.Called, "RunCommand should have been called")
+	assert.Equal(t, expectedCommand, mockRunner.Command, "Unexpected command")
+	assert.Equal(t, expectedArgs, mockRunner.Args, "Unexpected arguments")
+	assert.NoError(t, err, "Unexpected error")
 }

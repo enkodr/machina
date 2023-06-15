@@ -13,19 +13,19 @@ import (
 
 // Hypervisor is an interface for interacting with the hypervisor
 type Hypervisor interface {
-	Create(vm *Machine) error
-	Start(vm *Machine) error
-	Stop(vm *Machine) error
-	ForceStop(vm *Machine) error
-	Status(vm *Machine) (string, error)
-	Delete(vm *Machine) error
+	Create(vm *Instance) error
+	Start(vm *Instance) error
+	Stop(vm *Instance) error
+	ForceStop(vm *Instance) error
+	Status(vm *Instance) (string, error)
+	Delete(vm *Instance) error
 }
 
 // Libvirt is a struct that represents the libvirt hypervisor
 type Libvirt struct{}
 
 // Create is a method for the libvirt hypervisor that creates an instance
-func (h *Libvirt) Create(vm *Machine) error {
+func (h *Libvirt) Create(vm *Instance) error {
 	// Loads the software configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -80,7 +80,7 @@ func (h *Libvirt) Create(vm *Machine) error {
 }
 
 // Start is a method for the libvirt hypervisor that starts a stopped instance
-func (h *Libvirt) Start(vm *Machine) error {
+func (h *Libvirt) Start(vm *Instance) error {
 	// Loads the software configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -112,7 +112,7 @@ func (h *Libvirt) Start(vm *Machine) error {
 }
 
 // Start is a method for the libvirt hypervisor that stops a running instance
-func (h *Libvirt) Stop(vm *Machine) error {
+func (h *Libvirt) Stop(vm *Instance) error {
 	// Loads the software configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -144,7 +144,7 @@ func (h *Libvirt) Stop(vm *Machine) error {
 }
 
 // ForceStop is a method for the libvirt hypervisor that force stops a running/stuck instance
-func (h *Libvirt) ForceStop(vm *Machine) error {
+func (h *Libvirt) ForceStop(vm *Instance) error {
 	// Loads the software configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -176,7 +176,7 @@ func (h *Libvirt) ForceStop(vm *Machine) error {
 }
 
 // Status is a method for the libvirt hypervisor that gets the status of an instance
-func (h *Libvirt) Status(vm *Machine) (string, error) {
+func (h *Libvirt) Status(vm *Instance) (string, error) {
 	// Loads the software configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -206,7 +206,7 @@ func (h *Libvirt) Status(vm *Machine) (string, error) {
 }
 
 // Delete is a method for the libvirt hypervisor that deletes a created instance
-func (h *Libvirt) Delete(vm *Machine) error {
+func (h *Libvirt) Delete(vm *Instance) error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return err

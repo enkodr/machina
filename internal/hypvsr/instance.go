@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -18,8 +17,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Machine holds the configuration details for a single machine
-type Machine struct {
+// Instance holds the configuration details for a single machine
+type Instance struct {
 	baseDir     string
 	Kind        string      `yaml:"kind"`                  // Kind of the resource, should be 'Machine'
 	Name        string      `yaml:"name,omitempty"`        // Name of the machine. Must be unique in the system
@@ -33,6 +32,8 @@ type Machine struct {
 	Network     Network     `yaml:"network,omitempty"`     // Network configuration
 	Connection  string      `yaml:"connection,omitempty"`  // Connection to hypervisor
 	Variant     string      `yaml:"variant,omitempty"`     // OS variant to use
+	Hypervisor  Hypervisor
+	Runner      osutil.Runner
 }
 
 // Image holds the URL and checksum of the machine image
@@ -77,20 +78,20 @@ type Network struct {
 }
 
 // CreateDir creates the directory for the machine
-func (vm *Machine) CreateDir() error {
+func (instance *Instance) CreateDir() error {
 	// Check if VM already exists
-	_, err := os.Stat(filepath.Join(vm.baseDir, vm.Name))
+	_, err := os.Stat(filepath.Join(instance.baseDir, instance.Name))
 	if !os.IsNotExist(err) {
 		return errors.New("machine already exists")
 	}
 
 	// Create the directory
-	return os.Mkdir(filepath.Join(vm.baseDir, vm.Name), 0755)
+	return os.Mkdir(filepath.Join(instance.baseDir, instance.Name), 0755)
 
 }
 
 // Prepare prepares the machine for use
-func (vm *Machine) Prepare() error {
+func (instance *Instance) Prepare() error {
 	// Credentials network configuration
 	net := netutil.NewNetwork()
 	netYaml, err := yaml.Marshal(net)
@@ -99,7 +100,7 @@ func (vm *Machine) Prepare() error {
 	}
 
 	// Save network configuration
-	err = os.WriteFile(filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.NetworkFilename)), netYaml, 0644)
+	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.NetworkFilename)), netYaml, 0644)
 	if err != nil {
 		return err
 	}
@@ -111,7 +112,7 @@ func (vm *Machine) Prepare() error {
 	}
 
 	// Set Network configuration
-	vm.Network = Network{
+	instance.Network = Network{
 		NicName:    net.Ethernets.VirtNet.Name,
 		IPAddress:  ipAddr,
 		Gateway:    net.Ethernets.VirtNet.Gateway4,
@@ -120,10 +121,10 @@ func (vm *Machine) Prepare() error {
 
 	// Create user data
 	clCfg := usrutil.CloudConfig{
-		Hostname: vm.Name,
-		Username: vm.Credentials.Username,
-		Password: vm.Credentials.Password,
-		Groups:   vm.Credentials.Groups,
+		Hostname: instance.Name,
+		Username: instance.Credentials.Username,
+		Password: instance.Credentials.Password,
+		Groups:   instance.Credentials.Groups,
 	}
 
 	// Create user data
@@ -139,27 +140,34 @@ func (vm *Machine) Prepare() error {
 	}
 
 	usrYaml = append([]byte("#cloud-config\n"), usrYaml...)
-	err = os.WriteFile(filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.UserdataFilename)), usrYaml, 0644)
+	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.UserdataFilename)), usrYaml, 0644)
 	if err != nil {
 		return err
 	}
 
 	// Save private key
-	err = os.WriteFile(filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.PrivateKeyFilename)), clCfg.PrivateKey, 0600)
+	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.PrivateKeyFilename)), clCfg.PrivateKey, 0600)
 	if err != nil {
 		return err
 	}
 
 	// Create script files
-	vm.createScriptFiles()
+	instance.createScriptFiles()
 
 	// Save machine file
-	vmYaml, err := yaml.Marshal(vm)
+	vmYaml, err := yaml.Marshal(instance)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.InstanceFilename)), vmYaml, 0644)
+	// Set the hypervisor
+	if cfg.Hypervisor == "qemu" {
+		instance.Hypervisor = &Qemu{}
+	} else {
+		instance.Hypervisor = &Libvirt{}
+	}
+
+	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.InstanceFilename)), vmYaml, 0644)
 	if err != nil {
 		return err
 	}
@@ -169,10 +177,10 @@ func (vm *Machine) Prepare() error {
 }
 
 // DownloadImage downloads the image for the machine
-func (vm *Machine) DownloadImage() error {
+func (instance *Instance) DownloadImage() error {
 	// Get the image filename
 	imgDir := cfg.Directories.Images
-	fileName, err := imgutil.GetFilenameFromURL(vm.Image.URL)
+	fileName, err := imgutil.GetFilenameFromURL(instance.Image.URL)
 	if err != nil {
 		return err
 	}
@@ -181,12 +189,12 @@ func (vm *Machine) DownloadImage() error {
 	localImage := filepath.Join(imgDir, fileName)
 
 	// check if hashes equal
-	if osutil.Checksum(localImage, vm.Image.Checksum) {
+	if osutil.Checksum(localImage, instance.Image.Checksum) {
 		return nil
 	}
 
 	// download the image
-	err = netutil.DownloadAndSave(vm.Image.URL, imgDir)
+	err = netutil.DownloadAndSave(instance.Image.URL, imgDir)
 	if err != nil {
 		return err
 	}
@@ -194,9 +202,23 @@ func (vm *Machine) DownloadImage() error {
 }
 
 // CreateDisks creates the disks for the machine
-func (vm *Machine) CreateDisks() error {
+func (instance *Instance) CreateDisks() error {
+	err := instance.createInstanceDisk()
+	if err != nil {
+		return err
+	}
+
+	err = instance.createSeedDisk()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (instance *Instance) createInstanceDisk() error {
 	// Get the image filename
-	image, _ := imgutil.GetFilenameFromURL(vm.Image.URL)
+	image, _ := imgutil.GetFilenameFromURL(instance.Image.URL)
 
 	// Set the command
 	command := "qemu-img"
@@ -206,30 +228,32 @@ func (vm *Machine) CreateDisks() error {
 		"create",
 		"-F", "qcow2",
 		"-b", filepath.Join(cfg.Directories.Images, image),
-		"-f", "qcow2", filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.DiskFilename)),
-		vm.Resources.Disk,
+		"-f", "qcow2", filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.DiskFilename)),
+		instance.Resources.Disk,
 	}
 
 	// Run the command to create the disk
-	cmd := exec.Command(command, args...)
-	err := cmd.Run()
+	_, err := instance.Runner.RunCommand(command, args)
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func (instance *Instance) createSeedDisk() error {
 	// Set the command
-	command = "cloud-localds"
+	command := "cloud-localds"
 
 	// Set the arguments
-	args = []string{
-		fmt.Sprintf("--network-config=%s", filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.NetworkFilename))),
-		filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.SeedImageFilename)),
-		filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.UserdataFilename)),
+	args := []string{
+		fmt.Sprintf("--network-config=%s", filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.NetworkFilename))),
+		filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.SeedImageFilename)),
+		filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.UserdataFilename)),
 	}
 
-	// Run the command to create the seed disk
-	cmd = exec.Command(command, args...)
-	err = cmd.Run()
+	// Run the command to create the disk
+	_, err := instance.Runner.RunCommand(command, args)
 	if err != nil {
 		return err
 	}
@@ -238,23 +262,19 @@ func (vm *Machine) CreateDisks() error {
 }
 
 // Create creates the VM and starts it
-func (vm *Machine) Create() error {
-	// Define the Hypervisor to use
-	var h Hypervisor
-	if cfg.Hypervisor == "qemu" {
-		h = &Qemu{}
-	} else {
-		h = &Libvirt{}
-	}
-	return h.Create(vm)
+func (instance *Instance) Create() error {
+	return instance.Hypervisor.Create(instance)
 }
 
 // Wait until the machine is running
-func (vm *Machine) Wait() error {
+func (instance *Instance) Wait() error {
+	// Set the start time
 	start := time.Now()
 	running := false
 	for !running {
-		running = sshutil.IsResponding(vm.Network.IPAddress)
+		// Check if the machine is running
+		running = sshutil.IsResponding(instance.Network.IPAddress)
+		// Sleep for 1 second
 		time.Sleep(time.Second)
 		// Return a timeout error in case the machine takes more than
 		// 5 minutes to become responsive
@@ -267,87 +287,52 @@ func (vm *Machine) Wait() error {
 }
 
 // Starts a stopped vm
-func (vm *Machine) Start() error {
-	// Define the Hypervisor to use
-	var h Hypervisor
-	if cfg.Hypervisor == "qemu" {
-		h = &Qemu{}
-	} else {
-		h = &Libvirt{}
-	}
-	return h.Start(vm)
+func (instance *Instance) Start() error {
+	return instance.Hypervisor.Start(instance)
 }
 
 // Stops a running VM
-func (vm *Machine) Stop() error {
-	// Define the Hypervisor to use
-	var h Hypervisor
-	if cfg.Hypervisor == "qemu" {
-		h = &Qemu{}
-	} else {
-		h = &Libvirt{}
-	}
-	return h.Stop(vm)
+func (instance *Instance) Stop() error {
+	return instance.Hypervisor.Stop(instance)
 }
 
 // Force stops a running VM
-func (vm *Machine) ForceStop() error {
-	// Define the Hypervisor to use
-	var h Hypervisor
-	if cfg.Hypervisor == "qemu" {
-		h = &Qemu{}
-	} else {
-		h = &Libvirt{}
-	}
-	return h.ForceStop(vm)
+func (instance *Instance) ForceStop() error {
+	return instance.Hypervisor.ForceStop(instance)
 }
 
 // Gets the status of a VM
-func (vm *Machine) Status() (string, error) {
-	// Define the Hypervisor to use
-	var h Hypervisor
-	if cfg.Hypervisor == "qemu" {
-		h = &Qemu{}
-	} else {
-		h = &Libvirt{}
-	}
-	return h.Status(vm)
+func (instance *Instance) Status() (string, error) {
+	return instance.Hypervisor.Status(instance)
 }
 
 // Deletes a VM
-func (vm *Machine) Delete() error {
-	// Define the Hypervisor to use
-	var h Hypervisor
-	if cfg.Hypervisor == "qemu" {
-		h = &Qemu{}
-	} else {
-		h = &Libvirt{}
-	}
-	return h.Delete(vm)
+func (instance *Instance) Delete() error {
+	return instance.Hypervisor.Delete(instance)
 }
 
 // Copies content from host to guest or vice-versa
-func (vm *Machine) CopyContent(origin string, dest string) error {
+func (instance *Instance) CopyContent(origin string, dest string) error {
 	// Define the origin and destination for copying content
 	hostToVM := true
 	if hostToVM {
 		parts := strings.Split(dest, ":")
-		dest = fmt.Sprintf("%s@%s:%s", vm.Credentials.Username, vm.Network.IPAddress, parts[1])
+		dest = fmt.Sprintf("%s@%s:%s", instance.Credentials.Username, instance.Network.IPAddress, parts[1])
 	} else {
 		parts := strings.Split(origin, ":")
-		origin = fmt.Sprintf("%s@%s:%s", vm.Credentials.Username, vm.Network.IPAddress, parts[1])
+		origin = fmt.Sprintf("%s@%s:%s", instance.Credentials.Username, instance.Network.IPAddress, parts[1])
 	}
 	command := "scp"
 	args := []string{
 		"-r",
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.PrivateKeyFilename)),
 		origin,
 		dest,
 	}
 
-	cmd := exec.Command(command, args...)
-	err := cmd.Run()
+	// Run the command to create the disk
+	_, err := instance.Runner.RunCommand(command, args)
 	if err != nil {
 		return err
 	}
@@ -356,19 +341,19 @@ func (vm *Machine) CopyContent(origin string, dest string) error {
 }
 
 // Runs the initial scripts after the machine is created
-func (vm *Machine) RunInitScripts() error {
+func (instance *Instance) RunInitScripts() error {
 	// Copies the scripts
 	command := "scp"
 	args := []string{
 		"-o", "StrictHostKeyChecking=no",
-		"-i", filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.PrivateKeyFilename)),
 		"-r",
-		filepath.Join(vm.baseDir, vm.Name, "bin/"),
-		fmt.Sprintf("%s@%s:/tmp/machina", vm.Credentials.Username, vm.Network.IPAddress),
+		filepath.Join(instance.baseDir, instance.Name, "bin/"),
+		fmt.Sprintf("%s@%s:/tmp/machina", instance.Credentials.Username, instance.Network.IPAddress),
 	}
 
-	cmd := exec.Command(command, args...)
-	err := cmd.Run()
+	// Run the command to create the disk
+	_, err := instance.Runner.RunCommand(command, args)
 	if err != nil {
 		return err
 	}
@@ -377,33 +362,32 @@ func (vm *Machine) RunInitScripts() error {
 	command = "ssh"
 	args = []string{
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.PrivateKeyFilename)),
-		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
+		"-i", filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.PrivateKeyFilename)),
+		fmt.Sprintf("%s@%s", instance.Credentials.Username, instance.Network.IPAddress),
 		"/tmp/machina/install.sh",
 	}
-	cmd = exec.Command(command, args...)
-	err = cmd.Run()
+
+	// Run the command to create the disk
+	_, err = instance.Runner.RunCommand(command, args)
 	if err != nil {
 		return err
 	}
 
 	// Cleanup
-	return os.RemoveAll(filepath.Join(vm.baseDir, vm.Name, "bin"))
+	return os.RemoveAll(filepath.Join(instance.baseDir, instance.Name, "bin"))
 }
 
-func (vm *Machine) Shell() error {
+func (instance *Instance) Shell() error {
 	// Copies the init script into the VM
 	command := "ssh"
 	args := []string{
-		"-i", filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.PrivateKeyFilename)),
-		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
+		"-i", filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.PrivateKeyFilename)),
+		fmt.Sprintf("%s@%s", instance.Credentials.Username, instance.Network.IPAddress),
 	}
-	cmd := exec.Command(command, args...)
-	// Redirect stdin, stdout and stderr from the SSH connection to the host
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
+
+	// TODO: Add stdin, stdout, stderr to os.Stdout, os.Stdin, os.Stderr
+	// Run the command to create the disk
+	_, err := instance.Runner.RunCommand(command, args)
 	if err != nil {
 		return err
 	}
@@ -411,13 +395,13 @@ func (vm *Machine) Shell() error {
 	return nil
 }
 
-func (vm *Machine) GetVMs() []Machine {
-	return []Machine{*vm}
+func (instance *Instance) GetVMs() []Instance {
+	return []Instance{*instance}
 }
 
 // Creates the script files from the template
-func (vm *Machine) createScriptFiles() error {
-	err := os.MkdirAll(filepath.Join(vm.baseDir, vm.Name, "bin"), 0755)
+func (instance *Instance) createScriptFiles() error {
+	err := os.MkdirAll(filepath.Join(instance.baseDir, instance.Name, "bin"), 0755)
 	if err != nil {
 		return nil
 	}
@@ -438,7 +422,7 @@ StandardOutput=journal
 WantedBy=multi-user.target
 `
 
-	err = os.WriteFile(filepath.Join(vm.baseDir, vm.Name, "bin/machina.service"), []byte(sysDSvc), 0744)
+	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, "bin/machina.service"), []byte(sysDSvc), 0744)
 	if err != nil {
 		return nil
 	}
@@ -455,8 +439,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable machina.service
 sudo systemctl start machina.service
 `
-	vm.Scripts.Install += installScript
-	err = os.WriteFile(filepath.Join(vm.baseDir, vm.Name, "bin/install.sh"), []byte(vm.Scripts.Install), 0744)
+	instance.Scripts.Install += installScript
+	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, "bin/install.sh"), []byte(instance.Scripts.Install), 0744)
 	if err != nil {
 		return nil
 	}
@@ -468,9 +452,9 @@ sudo systemctl start machina.service
 		return err
 	}
 	if cfg.Hypervisor == "qemu" {
-		mountName = vm.Mount.Name
+		mountName = instance.Mount.Name
 	} else {
-		mountName = vm.Mount.GuestPath
+		mountName = instance.Mount.GuestPath
 	}
 	initScript := fmt.Sprintf(`#!/bin/bash
 HOST_PATH="%s"
@@ -481,14 +465,14 @@ if [[ "$GUEST_PATH" != "" ]]; then
 fi
 
 exit 0
-`, mountName, vm.Mount.GuestPath)
+`, mountName, instance.Mount.GuestPath)
 
-	err = os.WriteFile(filepath.Join(vm.baseDir, vm.Name, "bin/machina"), []byte(initScript), 0744)
+	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, "bin/machina"), []byte(initScript), 0744)
 	if err != nil {
 		return nil
 	}
 
-	err = os.WriteFile(filepath.Join(vm.baseDir, vm.Name, "bin/machinarc"), []byte(vm.Scripts.Init), 0644)
+	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, "bin/machinarc"), []byte(instance.Scripts.Init), 0644)
 	if err != nil {
 		return nil
 	}

@@ -11,6 +11,47 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestCommandRunner_RunCommand(t *testing.T) {
+	runner := CommandRunner{}
+	command := "echo"
+	args := []string{"Hello", "World"}
+
+	output, err := runner.RunCommand(command, args)
+
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	expectedOutput := "Hello World\n"
+	if output != expectedOutput {
+		t.Errorf("Expected output %q, got %q", expectedOutput, output)
+	}
+}
+
+func TestCommandRunner_RunNonExisingCommand(t *testing.T) {
+	runner := CommandRunner{}
+	command := "nonexistent"
+	args := []string{}
+
+	_, err := runner.RunCommand(command, args)
+
+	if err == nil {
+		t.Error("Expected an error, got nil")
+	}
+}
+
+func TestCommandRunner_RunCommandNonExistingFile(t *testing.T) {
+	runner := CommandRunner{}
+	command := "ls"
+	args := []string{"nonexistent-file"}
+
+	_, err := runner.RunCommand(command, args)
+
+	if err == nil {
+		t.Error("Expected an error, got nil")
+	}
+}
+
 func TestChecksum(t *testing.T) {
 	// Create a temporary file for testing
 	fileContent := []byte("Test file content")

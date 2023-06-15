@@ -12,6 +12,7 @@ import (
 
 	"github.com/enkodr/machina/internal/config"
 	"github.com/enkodr/machina/internal/netutil"
+	"github.com/enkodr/machina/internal/osutil"
 	"github.com/imdario/mergo"
 	"gopkg.in/yaml.v3"
 )
@@ -117,20 +118,21 @@ func Load(name string) (KindManager, error) {
 		return nil, err
 	}
 
-	var km KindManager
+	var instance KindManager
 	switch k.Kind {
 	case "Machine":
-		km = &Machine{}
+		instance = &Instance{}
 		// Unmarshal the Machine
-		err = yaml.Unmarshal(data, km)
+		err = yaml.Unmarshal(data, instance)
 		if err != nil {
 			return nil, err
 		}
+		instance.(*Instance).Runner = &osutil.CommandRunner{}
 		break
 	case "Cluster":
-		km = &Cluster{}
+		instance = &Cluster{}
 		// Unmarshal the Machine
-		err = yaml.Unmarshal(data, km)
+		err = yaml.Unmarshal(data, instance)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +140,7 @@ func Load(name string) (KindManager, error) {
 		return nil, errors.New("unknown kind")
 	}
 
-	return km, nil
+	return instance, nil
 }
 
 // parse the template from yaml to struct
@@ -154,7 +156,7 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 
 	switch k.Kind {
 	case "Machine":
-		vm := &Machine{}
+		vm := &Instance{}
 		err := yaml.Unmarshal(tpl, vm)
 		if err != nil {
 			return nil, err
@@ -173,7 +175,7 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 			return nil, err
 		}
 		c.baseDir = filepath.Join(cfg.Directories.Clusters, c.Name)
-		expandedMachines := []Machine{}
+		expandedMachines := []Instance{}
 		for _, machine := range c.Instances {
 			machine.extend()
 
@@ -198,7 +200,7 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 	return nil, errors.New("unsupported kind")
 }
 
-func (vm *Machine) extend() error {
+func (vm *Instance) extend() error {
 	for vm.Extends != "" {
 		tplFile := fmt.Sprintf("%s/%s.yaml", endpoint, vm.Extends)
 		baseTpl, err := netutil.Download(tplFile)
@@ -206,7 +208,7 @@ func (vm *Machine) extend() error {
 			return err
 		}
 
-		base := &Machine{}
+		base := &Instance{}
 		err = yaml.Unmarshal(baseTpl, base)
 		if err != nil {
 			return err

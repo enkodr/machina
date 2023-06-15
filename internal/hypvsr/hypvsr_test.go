@@ -23,7 +23,7 @@ func (m *MockKindManager) CreateDisks() error               { return nil }
 func (m *MockKindManager) Wait() error                      { return nil }
 func (m *MockKindManager) Shell() error                     { return nil }
 func (m *MockKindManager) RunInitScripts() error            { return nil }
-func (m *MockKindManager) GetVMs() []Machine                { return nil }
+func (m *MockKindManager) GetVMs() []Instance               { return nil }
 func (m *MockKindManager) CreateDir() error                 { return nil }
 
 func TestNewInstance(t *testing.T) {
