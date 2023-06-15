@@ -76,6 +76,7 @@ type Network struct {
 	MacAddress string `yaml:"macAddress,omitempty"` // MacAddress of the NIC
 }
 
+// CreateDir creates the directory for the machine
 func (vm *Machine) CreateDir() error {
 	// Check if VM already exists
 	_, err := os.Stat(filepath.Join(vm.baseDir, vm.Name))
@@ -83,11 +84,12 @@ func (vm *Machine) CreateDir() error {
 		return errors.New("machine already exists")
 	}
 
-	osutil.MkDir(filepath.Join(vm.baseDir, vm.Name))
+	// Create the directory
+	return os.Mkdir(filepath.Join(vm.baseDir, vm.Name), 0755)
 
-	return nil
 }
 
+// Prepare prepares the machine for use
 func (vm *Machine) Prepare() error {
 	// Credentials network configuration
 	net := netutil.NewNetwork()
@@ -96,13 +98,22 @@ func (vm *Machine) Prepare() error {
 		return err
 	}
 
+	// Save network configuration
 	err = os.WriteFile(filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.NetworkFilename)), netYaml, 0644)
 	if err != nil {
 		return err
 	}
+
+	// Get the IP address from the network configuration
+	ipAddr, err := netutil.GetIPFromNetworkAddress(net.Ethernets.VirtNet.Addresses[0])
+	if err != nil {
+		return err
+	}
+
+	// Set Network configuration
 	vm.Network = Network{
 		NicName:    net.Ethernets.VirtNet.Name,
-		IPAddress:  netutil.GetIPFromNetworkAddress(net.Ethernets.VirtNet.Addresses[0]),
+		IPAddress:  ipAddr,
 		Gateway:    net.Ethernets.VirtNet.Gateway4,
 		MacAddress: net.Ethernets.VirtNet.Match.MacAddress,
 	}
@@ -114,10 +125,14 @@ func (vm *Machine) Prepare() error {
 		Password: vm.Credentials.Password,
 		Groups:   vm.Credentials.Groups,
 	}
+
+	// Create user data
 	usr, err := usrutil.NewUserData(&clCfg)
 	if err != nil {
 		return err
 	}
+
+	// Save user data
 	usrYaml, err := yaml.Marshal(usr)
 	if err != nil {
 		return err
@@ -153,14 +168,16 @@ func (vm *Machine) Prepare() error {
 
 }
 
+// DownloadImage downloads the image for the machine
 func (vm *Machine) DownloadImage() error {
-	cfg, _ := config.LoadConfig()
+	// Get the image filename
 	imgDir := cfg.Directories.Images
 	fileName, err := imgutil.GetFilenameFromURL(vm.Image.URL)
 	if err != nil {
 		return err
 	}
 
+	// Set the local image path
 	localImage := filepath.Join(imgDir, fileName)
 
 	// check if hashes equal
@@ -176,11 +193,15 @@ func (vm *Machine) DownloadImage() error {
 	return nil
 }
 
+// CreateDisks creates the disks for the machine
 func (vm *Machine) CreateDisks() error {
-	cfg, _ := config.LoadConfig()
-	// Create main disk
+	// Get the image filename
 	image, _ := imgutil.GetFilenameFromURL(vm.Image.URL)
+
+	// Set the command
 	command := "qemu-img"
+
+	// Set the arguments
 	args := []string{
 		"create",
 		"-F", "qcow2",
@@ -188,20 +209,25 @@ func (vm *Machine) CreateDisks() error {
 		"-f", "qcow2", filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.DiskFilename)),
 		vm.Resources.Disk,
 	}
-	fmt.Println(args)
+
+	// Run the command to create the disk
 	cmd := exec.Command(command, args...)
 	err := cmd.Run()
 	if err != nil {
 		return err
 	}
 
-	// create seed disk
+	// Set the command
 	command = "cloud-localds"
+
+	// Set the arguments
 	args = []string{
 		fmt.Sprintf("--network-config=%s", filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.NetworkFilename))),
 		filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.SeedImageFilename)),
 		filepath.Join(vm.baseDir, vm.Name, config.GetFilename(config.UserdataFilename)),
 	}
+
+	// Run the command to create the seed disk
 	cmd = exec.Command(command, args...)
 	err = cmd.Run()
 	if err != nil {
@@ -213,7 +239,6 @@ func (vm *Machine) CreateDisks() error {
 
 // Create creates the VM and starts it
 func (vm *Machine) Create() error {
-	cfg, _ := config.LoadConfig()
 	// Define the Hypervisor to use
 	var h Hypervisor
 	if cfg.Hypervisor == "qemu" {
@@ -243,7 +268,6 @@ func (vm *Machine) Wait() error {
 
 // Starts a stopped vm
 func (vm *Machine) Start() error {
-	cfg, _ := config.LoadConfig()
 	// Define the Hypervisor to use
 	var h Hypervisor
 	if cfg.Hypervisor == "qemu" {
@@ -256,7 +280,6 @@ func (vm *Machine) Start() error {
 
 // Stops a running VM
 func (vm *Machine) Stop() error {
-	cfg, _ := config.LoadConfig()
 	// Define the Hypervisor to use
 	var h Hypervisor
 	if cfg.Hypervisor == "qemu" {
@@ -269,7 +292,6 @@ func (vm *Machine) Stop() error {
 
 // Force stops a running VM
 func (vm *Machine) ForceStop() error {
-	cfg, _ := config.LoadConfig()
 	// Define the Hypervisor to use
 	var h Hypervisor
 	if cfg.Hypervisor == "qemu" {
@@ -282,7 +304,6 @@ func (vm *Machine) ForceStop() error {
 
 // Gets the status of a VM
 func (vm *Machine) Status() (string, error) {
-	cfg, _ := config.LoadConfig()
 	// Define the Hypervisor to use
 	var h Hypervisor
 	if cfg.Hypervisor == "qemu" {
@@ -295,7 +316,6 @@ func (vm *Machine) Status() (string, error) {
 
 // Deletes a VM
 func (vm *Machine) Delete() error {
-	cfg, _ := config.LoadConfig()
 	// Define the Hypervisor to use
 	var h Hypervisor
 	if cfg.Hypervisor == "qemu" {

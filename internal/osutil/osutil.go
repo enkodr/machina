@@ -9,19 +9,12 @@ import (
 	"strings"
 )
 
-// create a directory if it doesn't exist yet
-func MkDir(path string) {
-	_, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		os.MkdirAll(path, os.ModePerm)
-	}
-}
-
-// CheckSum validates the file checksum agains the one provided
+// Checksum checks if the checksum of a file matches the specified checksum
 func Checksum(path, checksum string) bool {
-	// Get the hash algorithm from what is specified for the machine
 	var hasher hash.Hash
+	// Split the checksum into the algorithm and the hash
 	sha := strings.Split(checksum, ":")
+	// Return false if the algorithm is not specified
 	if len(sha) == 1 {
 		return false
 	}

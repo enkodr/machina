@@ -2,33 +2,41 @@ package imgutil
 
 import (
 	"errors"
-	"path/filepath"
+	"os"
 	"strings"
 
 	"github.com/enkodr/machina/internal/config"
-	"github.com/enkodr/machina/internal/osutil"
 )
 
-func EnsureDirectories() error {
-	// Load configuration
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		return err
-	}
+func EnsureDirectories(cfg *config.Config) {
+	// Create directories
+	os.MkdirAll(cfg.Directories.Images, 0755)
+	os.MkdirAll(cfg.Directories.Instances, 0755)
+	os.MkdirAll(cfg.Directories.Clusters, 0755)
 
-	osutil.MkDir(cfg.Directories.Images)
-	osutil.MkDir(filepath.Join(cfg.Directories.Instances))
-	osutil.MkDir(filepath.Join(cfg.Directories.Clusters))
-
-	return nil
 }
 
 // GetFileName extracts and returns the name of the file from the URL
 func GetFilenameFromURL(url string) (string, error) {
+	if url == "" {
+		return "", errors.New("empty URL")
+	}
+
 	parts := strings.Split(url, "/")
 	size := len(parts)
-	if size < 4 {
-		return "", errors.New("no file in the url")
+
+	if size < 2 {
+		return "", errors.New("invalid URL format")
 	}
-	return parts[size-1], nil
+
+	if size < 4 {
+		return "", errors.New("no file in the URL")
+	}
+
+	filename := parts[size-1]
+	if filename == "" {
+		return "", errors.New("no file in the URL")
+	}
+
+	return filename, nil
 }

@@ -33,24 +33,33 @@ type VirtNet struct {
 	Nameservers Nameservers `yaml:"nameservers"`
 }
 
+// Match is used to match the MAC address of the interface
 type Match struct {
 	MacAddress string `yaml:"macaddress"`
 }
 
+// Nameservers is used to set the DNS servers
 type Nameservers struct {
 	Addresses []string `yaml:"addresses"`
 }
 
 var (
-	ipRange     = "192.168.122"
+	// The IP range to use for the virtual network
+	ipRange = "192.168.122"
+	// The DNS servers to use
 	nameservers = []string{"1.1.1.1", "8.8.8.8"}
 )
 
+// NewNetwork creates a new network
 func NewNetwork() *Network {
 	net := &Network{}
+	// Generate a random IP address
 	ipAddress := GenerateIPAddress()
+	// Get the gateway address from the IP address
 	gwAddress, _ := GetGatewayFromIP(ipAddress)
+	// Generate a random MAC address
 	macAddress, _ := RandomMacAddress()
+	// Set the network properties
 	net.Version = 2
 	net.Ethernets.VirtNet.Name = "virtnet"
 	net.Ethernets.VirtNet.Addresses = append(net.Ethernets.VirtNet.Addresses, fmt.Sprintf("%s/24", ipAddress))
@@ -148,7 +157,12 @@ func DownloadAndSave(url, destination string) error {
 
 }
 
-func GetIPFromNetworkAddress(net string) string {
-	ip := strings.Split(net, "/")
-	return ip[0]
+// GetIPFromNetworkAddress returns the IP address from a network address
+func GetIPFromNetworkAddress(netAddr string) (string, error) {
+	ip, _, err := net.ParseCIDR(netAddr)
+	if err != nil {
+		return "", err
+	}
+
+	return ip.String(), nil
 }

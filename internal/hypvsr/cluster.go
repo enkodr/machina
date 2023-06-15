@@ -3,8 +3,6 @@ package hypvsr
 import (
 	"errors"
 	"os"
-
-	"github.com/enkodr/machina/internal/osutil"
 )
 
 // Cluster holds the configuration details for a cluster of machines
@@ -24,7 +22,7 @@ func (c *Cluster) CreateDir() error {
 	}
 
 	// Create the cluster direcotry
-	osutil.MkDir(c.baseDir)
+	os.Mkdir(c.baseDir, 0755)
 
 	// Create the directory for each of the cluster instances
 	for _, vm := range c.Instances {

@@ -1,61 +1,74 @@
 package osutil
 
 import (
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/hex"
+	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMkDir(t *testing.T) {
-	// Define test data
-	testDir := "testdir"
+func TestChecksum(t *testing.T) {
+	// Create a temporary file for testing
+	fileContent := []byte("Test file content")
+	tmpFile, err := ioutil.TempFile("", "testfile")
+	assert.Nil(t, err)
+	tmpFilePath := tmpFile.Name()
+	defer os.Remove(tmpFilePath)
+	defer tmpFile.Close()
+	_, err = tmpFile.Write(fileContent)
+	assert.Nil(t, err)
 
-	// Clean up test directory in case it already exists
-	os.RemoveAll(testDir)
+	// Test case with a matching SHA256 checksum
+	checksum := "sha256:" + sha256Checksum(fileContent)
+	result := Checksum(tmpFilePath, checksum)
+	assert.True(t, result)
 
-	// Create test directory
-	MkDir(testDir)
+	// Test case with a non-matching SHA256 checksum
+	checksum = "sha256:InvalidChecksum"
+	result = Checksum(tmpFilePath, checksum)
+	assert.False(t, result)
 
-	// Check if test directory exists
-	_, err := os.Stat(testDir)
-	assert.NoError(t, err)
+	// Test case with an unsupported algorithm (MD5)
+	checksum = "md5:InvalidChecksum"
+	result = Checksum(tmpFilePath, checksum)
+	assert.False(t, result)
 
-	// Clean up test directory
-	err = os.RemoveAll(testDir)
-	assert.NoError(t, err)
+	// Test case with an invalid checksum format
+	checksum = "InvalidChecksum"
+	result = Checksum(tmpFilePath, checksum)
+	assert.False(t, result)
+
+	// Test case with a non-existing file
+	nonExistingFilePath := "/path/to/nonexistingfile"
+	checksum = "sha256:" + sha256Checksum(fileContent)
+	result = Checksum(nonExistingFilePath, checksum)
+	assert.False(t, result)
+
+	// Test case with a matching SHA512 checksum
+	checksum = "sha512:" + sha512Checksum(fileContent)
+	result = Checksum(tmpFilePath, checksum)
+	assert.True(t, result)
+
+	// Test case with a non-matching SHA512 checksum
+	checksum = "sha512:InvalidChecksum"
+	result = Checksum(tmpFilePath, checksum)
+	assert.False(t, result)
 }
 
-func TestChecksum(t *testing.T) {
-	// Test case 1: sha256 checksum
-	path := "testdata/file.txt"
-	checksum := "sha256:5bee30d1de847f564feaeb1f8ad30c2e9ace4766b3fa8a9fa11be2b2f0cea2f4"
-	want := true
-	got := Checksum(path, checksum)
-	assert.Equal(t, want, got)
+// Helper function to calculate SHA256 checksum
+func sha256Checksum(data []byte) string {
+	hasher := sha256.New()
+	hasher.Write(data)
+	return hex.EncodeToString(hasher.Sum(nil))
+}
 
-	// Test case 2: sha512 checksum
-	checksum = "sha512:9c5f698667819d664c5fce6e6bed8cc0c96c488b148377a9a88e7dd670a401ddfd9e746e2c7e9935617815cf103143dada72b8b25a075d2747c105528cd9acf3"
-	want = true
-	got = Checksum(path, checksum)
-	assert.Equal(t, want, got)
-
-	// Test case 3: invalid checksum
-	checksum = "md5:invalidchecksum"
-	want = false
-	got = Checksum(path, checksum)
-	assert.Equal(t, want, got)
-
-	// Test case 4: invalid file path
-	path = "invalidpath"
-	checksum = "sha256:5bee30d1de847f564feaeb1f8ad30c2e9ace4766b3fa8a9fa11be2b2f0cea2f4"
-	want = false
-	got = Checksum(path, checksum)
-	assert.Equal(t, want, got)
-
-	// Test case 5: test empty sha
-	path = "testdata/file.txt"
-	want = false
-	got = Checksum(path, "")
-	assert.Equal(t, want, got)
+// Helper function to calculate SHA512 checksum
+func sha512Checksum(data []byte) string {
+	hasher := sha512.New()
+	hasher.Write(data)
+	return hex.EncodeToString(hasher.Sum(nil))
 }

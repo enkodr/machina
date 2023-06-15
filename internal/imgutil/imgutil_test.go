@@ -9,30 +9,88 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Helper function to check if a directory exists
+func directoryExists(path string) bool {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	return false
+}
+
 func TestEnsureDirectories(t *testing.T) {
-	name := "test"
-	EnsureDirectories()
-	cfg, err := config.LoadConfig()
-	assert.NoError(t, err)
+	tempDir := t.TempDir()
 
-	// Check if directories were created
-	// _, err := os.Stat(filepath.Join(cfg.Directories.Images))
-	// assert.NoError(t, err)
+	// Test case when directories are successfully created
+	cfg := &config.Config{
+		Directories: config.Directories{
+			Images:    filepath.Join(tempDir, "/path/to/images"),
+			Instances: filepath.Join(tempDir, "/path/to/instances"),
+			Clusters:  filepath.Join(tempDir, "/path/to/clusters"),
+		},
+	}
+	EnsureDirectories(cfg)
+	assert.True(t, directoryExists(cfg.Directories.Images))
+	assert.True(t, directoryExists(cfg.Directories.Instances))
+	assert.True(t, directoryExists(cfg.Directories.Clusters))
 
-	_, err = os.Stat(filepath.Join(cfg.Directories.Instances, name))
-	assert.NoError(t, err)
-
-	// Cleanup test directory
-	os.Remove(filepath.Join(cfg.Directories.Instances, name))
+	// Test case when directory creation fails
+	cfg = &config.Config{
+		Directories: config.Directories{
+			Images:    "/invalid/path", // Invalid path
+			Instances: "/path/to/instances",
+			Clusters:  "/path/to/clusters",
+		},
+	}
+	EnsureDirectories(cfg)
+	assert.False(t, directoryExists(cfg.Directories.Images))
+	assert.False(t, directoryExists(cfg.Directories.Instances))
+	assert.False(t, directoryExists(cfg.Directories.Clusters))
 }
 
 func TestGetFilenameFromURL(t *testing.T) {
-	// Test case 1: Valid URL
-	want := "name.img"
-	got, _ := GetFilenameFromURL("https://www.linux.com/name.img")
-	assert.Equal(t, want, got)
+	// Test case with a valid URL
+	url := "https://example.com/files/document.pdf"
+	expectedFilename := "document.pdf"
+	filename, err := GetFilenameFromURL(url)
+	assert.Nil(t, err)
+	assert.Equal(t, expectedFilename, filename)
 
-	// Test case 2: Invalid URL
-	_, err := GetFilenameFromURL("https://www.linux.com")
-	assert.Error(t, err)
+	// Test case with a URL that doesn't contain a filename
+	url = "https://example.com/files/"
+	expectedError := "no file in the URL"
+	filename, err = GetFilenameFromURL(url)
+	assert.NotNil(t, err)
+	assert.EqualError(t, err, expectedError)
+
+	// Test case with a URL that has multiple segments
+	url = "https://example.com/files/folder/document.pdf"
+	expectedFilename = "document.pdf"
+	filename, err = GetFilenameFromURL(url)
+	assert.Nil(t, err)
+	assert.Equal(t, expectedFilename, filename)
+
+	// Test case with an empty URL
+	url = ""
+	expectedError = "empty URL"
+	filename, err = GetFilenameFromURL(url)
+	assert.NotNil(t, err)
+	assert.EqualError(t, err, expectedError)
+
+	// Test case with a URL that only contains the root
+	url = "https://example.com"
+	expectedError = "no file in the URL"
+	filename, err = GetFilenameFromURL(url)
+	assert.NotNil(t, err)
+	assert.EqualError(t, err, expectedError)
+
+	// Test case with an invalid URL format
+	url = "example.com"
+	expectedError = "invalid URL format"
+	filename, err = GetFilenameFromURL(url)
+	assert.NotNil(t, err)
+	assert.EqualError(t, err, expectedError)
 }

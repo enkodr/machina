@@ -101,7 +101,8 @@ func (f *RemoteTemplate) Load() (KindManager, error) {
 // Load loads the YAML file content into the struct
 func Load(name string) (KindManager, error) {
 	// Loads the configuration
-	cfg, err := config.LoadConfig()
+	var err error
+	cfg, err = config.LoadConfig()
 	if err != nil {
 		return nil, err
 	}

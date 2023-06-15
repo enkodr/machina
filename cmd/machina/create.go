@@ -38,7 +38,8 @@ var createCommand = &cobra.Command{
 		fmt.Printf("Creating instance\n")
 		// Call the NewInstance function of the hypvsr package to create a new instance instance with the given name.
 		// The function returns a reference to the new instance instance and any error that may have occurred.
-		instance, err := hypvsr.NewInstance(name)
+		tpl := hypvsr.NewTemplate(name)
+		instance, err := hypvsr.NewInstance(tpl)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating instance\n")
 			os.Exit(1)
