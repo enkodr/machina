@@ -20,17 +20,17 @@ func TestMachine_CreateDir(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	// Initialize a Machine instance for testing
-	vm := Instance{
+	instance := Instance{
 		baseDir: tmpDir,
 		Name:    "test-machine",
 	}
 
 	// Test case: Machine directory does not exist
-	err := vm.CreateDir()
+	err := instance.CreateDir()
 	assert.NoError(t, err, "Error creating machine directory")
 
 	// Test case: Machine directory already exists
-	err = vm.CreateDir()
+	err = instance.CreateDir()
 	assert.Error(t, err, "Machine directory should already exist")
 }
 
@@ -40,7 +40,7 @@ func TestMachine_Prepare(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// Initialize a Machine instance for testing
-	vm := Instance{
+	instance := Instance{
 		Name:    "test-machine",
 		baseDir: tempDir,
 		Credentials: Credentials{
@@ -50,34 +50,47 @@ func TestMachine_Prepare(t *testing.T) {
 		},
 	}
 
-	// Create the machine directory for testing
-	os.Mkdir(filepath.Join(tempDir, vm.Name), 0755)
+	// Mock configuration
+	cfg = &config.Config{
+		Directories: config.Directories{
+			Images:    filepath.Join(tempDir, "images"),
+			Instances: filepath.Join(tempDir, "instances"),
+			Clusters:  filepath.Join(tempDir, "clusters"),
+		},
+	}
 
-	err := vm.Prepare()
+	// Create the machine directory for testing
+	os.Mkdir(filepath.Join(tempDir, instance.Name), 0755)
+
+	err := instance.Prepare()
 	assert.NoError(t, err, "Error preparing machine")
 
 	// Verify network configuration file
-	networkPath := filepath.Join(tempDir, vm.Name, config.GetFilename(config.NetworkFilename))
+	networkPath := filepath.Join(tempDir, instance.Name, config.GetFilename(config.NetworkFilename))
 	_, err = os.Stat(networkPath)
 	assert.NoError(t, err, "Network configuration file not found")
 
 	// Verify user data file
-	userdataPath := filepath.Join(tempDir, vm.Name, config.GetFilename(config.UserdataFilename))
+	userdataPath := filepath.Join(tempDir, instance.Name, config.GetFilename(config.UserdataFilename))
 	_, err = os.Stat(userdataPath)
 	assert.NoError(t, err, "User data file not found")
 
 	// Verify private key file
-	privateKeyPath := filepath.Join(tempDir, vm.Name, config.GetFilename(config.PrivateKeyFilename))
+	privateKeyPath := filepath.Join(tempDir, instance.Name, config.GetFilename(config.PrivateKeyFilename))
 	_, err = os.Stat(privateKeyPath)
 	assert.NoError(t, err, "Private key file not found")
 
 	// Verify machine file
-	machinePath := filepath.Join(tempDir, vm.Name, config.GetFilename(config.InstanceFilename))
+	machinePath := filepath.Join(tempDir, instance.Name, config.GetFilename(config.InstanceFilename))
 	_, err = os.Stat(machinePath)
 	assert.NoError(t, err, "Machine file not found")
 }
 
 func TestMachine_DownloadImage(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir := t.TempDir()
+	defer os.RemoveAll(tempDir)
+
 	// Create a test image file
 	fileContent := []byte("mock image content")
 
@@ -95,12 +108,12 @@ func TestMachine_DownloadImage(t *testing.T) {
 	// Mock configuration
 	cfg = &config.Config{
 		Directories: config.Directories{
-			Images: t.TempDir(),
+			Images: tempDir,
 		},
 	}
 
 	// Initialize a Machine instance for testing
-	vm := Instance{
+	instance := Instance{
 		Image: Image{
 			URL:      fmt.Sprintf("%s/file.txt", mockServer.URL),
 			Checksum: checksum,
@@ -108,17 +121,17 @@ func TestMachine_DownloadImage(t *testing.T) {
 	}
 
 	// Test case: Image is already downloaded
-	err := vm.DownloadImage()
+	err := instance.DownloadImage()
 	assert.NoError(t, err, "Error downloading image")
 
 	// Test case: Image needs to be downloaded
-	vm.Image.URL = mockServer.URL + "/new-image.qcow2"
-	err = vm.DownloadImage()
+	instance.Image.URL = mockServer.URL + "/new-image.qcow2"
+	err = instance.DownloadImage()
 	assert.NoError(t, err, "Error downloading new image")
 
 	// Test case: Invalid image URL
-	vm.Image.URL = "invalid-url"
-	err = vm.DownloadImage()
+	instance.Image.URL = "invalid-url"
+	err = instance.DownloadImage()
 	assert.Error(t, err, "Invalid image URL")
 
 	// Close the mock server
