@@ -49,15 +49,15 @@ var createCommand = &cobra.Command{
 		}
 		// Check if cpus was passed by flag
 		if newCPUs != "" {
-			vm.Specs.CPUs = newCPUs
+			vm.Resources.CPUs = newCPUs
 		}
 		// Check if memory was passed by flag
 		if newMem != "" {
-			vm.Specs.Memory = strings.ToUpper(newMem)
+			vm.Resources.Memory = strings.ToUpper(newMem)
 		}
 		// Check if disk was passed by flag
 		if newDisk != "" {
-			vm.Specs.Disk = strings.ToUpper(newDisk)
+			vm.Resources.Disk = strings.ToUpper(newDisk)
 		}
 
 		// Prepare necessary files for machine creation

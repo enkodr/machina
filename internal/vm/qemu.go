@@ -24,8 +24,8 @@ func (h *Qemu) Start(vm *VMConfig) error {
 	args := []string{
 		"-machine", fmt.Sprintf("accel=%s,type=q35", getHypervisor()),
 		"-cpu", "host",
-		"-smp", vm.Specs.CPUs,
-		"-m", vm.Specs.Memory,
+		"-smp", vm.Resources.CPUs,
+		"-m", vm.Resources.Memory,
 		"-nographic",
 		"-netdev", fmt.Sprintf("bridge,id=%s,br=virbr0", vm.Network.NicName),
 		"-device", fmt.Sprintf("virtio-net-pci,netdev=%s,id=virtnet0,mac=%s", vm.Network.NicName, vm.Network.MacAddress),
