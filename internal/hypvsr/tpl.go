@@ -127,7 +127,6 @@ func Load(name string) (KindManager, error) {
 		if err != nil {
 			return nil, err
 		}
-		instance.(*Instance).Runner = &osutil.CommandRunner{}
 		break
 	case "Cluster":
 		instance = &Cluster{}
@@ -166,6 +165,7 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 			return nil, err
 		}
 		vm.baseDir = cfg.Directories.Instances
+		vm.Runner = &osutil.CommandRunner{}
 
 		return vm, nil
 	case "Cluster":

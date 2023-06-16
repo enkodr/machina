@@ -32,6 +32,7 @@ func TestEnsureDirectories(t *testing.T) {
 			Clusters:  filepath.Join(tempDir, "/path/to/clusters"),
 		},
 	}
+
 	EnsureDirectories(cfg)
 	assert.True(t, directoryExists(cfg.Directories.Images))
 	assert.True(t, directoryExists(cfg.Directories.Instances))

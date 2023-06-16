@@ -415,7 +415,7 @@ Description=machina mount
 Type=forking
 User=machina
 Group=machina
-ExecStart=/etc/machina/machina
+ExecStart=/etc/machina/machina.service
 StandardOutput=journal
 	
 [Install]
@@ -432,7 +432,7 @@ WantedBy=multi-user.target
 sudo mkdir -p /etc/machina
 echo 'source /etc/machina/machinarc' >> $HOME/.bashrc
 sudo mv /tmp/machina/* /etc/machina
-sudo chcon -R -t bin_t /etc/machina/machina
+sudo chcon -R -t bin_t /etc/machina/machina.service
 sudo cp /etc/machina/machina.service /etc/systemd/system/machina.service
 sudo chmod 664 /etc/systemd/system/machina.service
 sudo systemctl daemon-reload
