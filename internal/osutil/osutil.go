@@ -5,26 +5,66 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"hash"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
 )
 
-// Runner is an interface that defines the behavior of the command runner.
 type Runner interface {
-	RunCommand(command string, args []string) (string, error)
+	RunCommand(command string, args []string, options ...Option) (string, error)
+}
+
+type Option func(*commandOptions)
+
+type commandOptions struct {
+	stdin  io.Reader
+	stdout io.Writer
+	stderr io.Writer
+}
+
+// WithStdin sets the stdin for the command.
+func WithStdin(stdin io.Reader) Option {
+	return func(opts *commandOptions) {
+		opts.stdin = stdin
+	}
+}
+
+// WithStdout sets the stdout for the command.
+func WithStdout(stdout io.Writer) Option {
+	return func(opts *commandOptions) {
+		opts.stdout = stdout
+	}
+}
+
+// WithStderr sets the stderr for the command.
+func WithStderr(stderr io.Writer) Option {
+	return func(opts *commandOptions) {
+		opts.stderr = stderr
+	}
 }
 
 // CommandRunner is the implementation of the Runner interface that runs OS commands.
 type CommandRunner struct{}
 
-// RunCommand runs the given OS command and returns the output as a string.
-func (c CommandRunner) RunCommand(command string, args []string) (string, error) {
+// RunCommand runs the given OS command with the specified options, and returns the output as a string,
+// along with any error that occurred.
+func (c CommandRunner) RunCommand(command string, args []string, options ...Option) (string, error) {
+	opts := &commandOptions{}
+	for _, opt := range options {
+		opt(opts)
+	}
+
 	cmd := exec.Command(command, args...)
+	cmd.Stdin = opts.stdin
+	cmd.Stdout = opts.stdout
+	cmd.Stderr = opts.stderr
+
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}
+
 	return string(output), nil
 }
 

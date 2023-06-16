@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -19,21 +20,21 @@ import (
 
 // Instance holds the configuration details for a single machine
 type Instance struct {
-	baseDir     string
-	Kind        string      `yaml:"kind"`                  // Kind of the resource, should be 'Machine'
-	Name        string      `yaml:"name,omitempty"`        // Name of the machine. Must be unique in the system
-	Extends     string      `yaml:"extends,omitempty"`     // Name of the Machine to extend
-	Replicas    int         `yaml:"replicas,omitempty"`    // Number of Replicas (used with kind Cluster)
-	Image       Image       `yaml:"image,omitempty"`       // Image details for the machine
-	Credentials Credentials `yaml:"credentials,omitempty"` // Credentials for the machine
-	Resources   Resources   `yaml:"resources,omitempty"`   // Hardware resources for the machine
-	Scripts     Scripts     `yaml:"scripts,omitempty"`     // Scripts to run in the machine
-	Mount       Mount       `yaml:"mount,omitempty"`       // Mount point details
-	Network     Network     `yaml:"network,omitempty"`     // Network configuration
-	Connection  string      `yaml:"connection,omitempty"`  // Connection to hypervisor
-	Variant     string      `yaml:"variant,omitempty"`     // OS variant to use
-	Hypervisor  Hypervisor
-	Runner      osutil.Runner
+	baseDir     string        `yaml:"-"`
+	Kind        string        `yaml:"kind"`                  // Kind of the resource, should be 'Machine'
+	Name        string        `yaml:"name,omitempty"`        // Name of the machine. Must be unique in the system
+	Extends     string        `yaml:"extends,omitempty"`     // Name of the Machine to extend
+	Replicas    int           `yaml:"replicas,omitempty"`    // Number of Replicas (used with kind Cluster)
+	Image       Image         `yaml:"image,omitempty"`       // Image details for the machine
+	Credentials Credentials   `yaml:"credentials,omitempty"` // Credentials for the machine
+	Resources   Resources     `yaml:"resources,omitempty"`   // Hardware resources for the machine
+	Scripts     Scripts       `yaml:"scripts,omitempty"`     // Scripts to run in the machine
+	Mount       Mount         `yaml:"mount,omitempty"`       // Mount point details
+	Network     Network       `yaml:"network,omitempty"`     // Network configuration
+	Connection  string        `yaml:"connection,omitempty"`  // Connection to hypervisor
+	Variant     string        `yaml:"variant,omitempty"`     // OS variant to use
+	Hypervisor  Hypervisor    `yaml:"-"`
+	Runner      osutil.Runner `yaml:"-"`
 }
 
 // Image holds the URL and checksum of the machine image
@@ -152,7 +153,10 @@ func (instance *Instance) Prepare() error {
 	}
 
 	// Create script files
-	instance.createScriptFiles()
+	err = instance.createScriptFiles()
+	if err != nil {
+		return err
+	}
 
 	// Save machine file
 	vmYaml, err := yaml.Marshal(instance)
@@ -161,11 +165,7 @@ func (instance *Instance) Prepare() error {
 	}
 
 	// Set the hypervisor
-	if cfg.Hypervisor == "qemu" {
-		instance.Hypervisor = &Qemu{}
-	} else {
-		instance.Hypervisor = &Libvirt{}
-	}
+	instance.Hypervisor = getHypervisor()
 
 	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.InstanceFilename)), vmYaml, 0644)
 	if err != nil {
@@ -387,7 +387,16 @@ func (instance *Instance) Shell() error {
 
 	// TODO: Add stdin, stdout, stderr to os.Stdout, os.Stdin, os.Stderr
 	// Run the command to create the disk
-	_, err := instance.Runner.RunCommand(command, args)
+	// _, err := instance.Runner.RunCommand(command, args, osutil.WithStdin(os.Stdin), osutil.WithStdout(os.Stdout), osutil.WithStderr(os.Stderr))
+	// if err != nil {
+	// 	return err
+	// }
+	cmd := exec.Command(command, args...)
+	// Redirect stdin, stdout and stderr from the SSH connection to the host
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
 	if err != nil {
 		return err
 	}
@@ -415,7 +424,7 @@ Description=machina mount
 Type=forking
 User=machina
 Group=machina
-ExecStart=/etc/machina/machina.service
+ExecStart=/etc/machina/machina
 StandardOutput=journal
 	
 [Install]
@@ -447,10 +456,6 @@ sudo systemctl start machina.service
 
 	// Boot script
 	var mountName string
-	cfg, err := config.LoadConfig()
-	if cfg != nil {
-		return err
-	}
 	if cfg.Hypervisor == "qemu" {
 		mountName = instance.Mount.Name
 	} else {

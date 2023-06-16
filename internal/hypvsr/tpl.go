@@ -127,6 +127,9 @@ func Load(name string) (KindManager, error) {
 		if err != nil {
 			return nil, err
 		}
+		instance.(*Instance).Runner = &osutil.CommandRunner{}
+		instance.(*Instance).baseDir = cfg.Directories.Instances
+		instance.(*Instance).Hypervisor = getHypervisor()
 		break
 	case "Cluster":
 		instance = &Cluster{}
@@ -135,6 +138,7 @@ func Load(name string) (KindManager, error) {
 		if err != nil {
 			return nil, err
 		}
+		instance.(*Cluster).baseDir = filepath.Join(cfg.Directories.Clusters, instance.(*Cluster).Name)
 	default:
 		return nil, errors.New("unknown kind")
 	}

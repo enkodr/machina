@@ -128,7 +128,7 @@ func (h *Qemu) Delete(vm *Instance) error {
 }
 
 // Get Hypervisor driver
-func getHypervisor() string {
+func getHypervisorDriver() string {
 	driver := "kvm"
 
 	if runtime.GOOS == "darwin" {

@@ -78,3 +78,11 @@ func convertMemory(memory string) (string, error) {
 
 	return ram, nil
 }
+
+func getHypervisor() Hypervisor {
+	if cfg.Hypervisor == "qemu" {
+		return &Qemu{}
+	} else {
+		return &Libvirt{}
+	}
+}
