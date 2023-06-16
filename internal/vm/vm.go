@@ -25,7 +25,7 @@ type VMConfig struct {
 	Name        string      `yaml:"name,omitempty"`
 	Image       Image       `yaml:"image,omitempty"`
 	Credentials Credentials `yaml:"credentials,omitempty"`
-	Specs       Specs       `yaml:"specs,omitempty"`
+	Resources   Resources   `yaml:"resources,omitempty"`
 	Scripts     Scripts     `yaml:"scripts,omitempty"`
 	Mount       Mount       `yaml:"mount,omitempty"`
 	Network     Network     `yaml:"network,omitempty"`
@@ -46,8 +46,8 @@ type Credentials struct {
 	Groups   []string `yaml:"groups,omitempty"`
 }
 
-// Specs represents the hardware specifications
-type Specs struct {
+// Resources represents the hardware specifications
+type Resources struct {
 	CPUs   string `yaml:"cpus,omitempty"`
 	Memory string `yaml:"memory,omitempty"`
 	Disk   string `yaml:"disk,omitempty"`
@@ -227,7 +227,7 @@ func (vm *VMConfig) CreateDisks() error {
 		"-F", "qcow2",
 		"-b", filepath.Join(cfg.Directories.Images, image),
 		"-f", "qcow2", filepath.Join(cfg.Directories.Instances, vm.Name, "disk.img"),
-		vm.Specs.Disk,
+		vm.Resources.Disk,
 	}
 	cmd := exec.Command(command, args...)
 	err := cmd.Run()

@@ -97,8 +97,8 @@ func parseTemplate(tpl []byte) (*VMConfig, error) {
 		base.Mount = Mount{}
 		mergo.Merge(vm, base)
 	}
-	vm.Specs.Disk = strings.ToUpper(vm.Specs.Disk)
-	vm.Specs.Memory = strings.ToUpper(vm.Specs.Memory)
+	vm.Resources.Disk = strings.ToUpper(vm.Resources.Disk)
+	vm.Resources.Memory = strings.ToUpper(vm.Resources.Memory)
 
 	return vm, nil
 }

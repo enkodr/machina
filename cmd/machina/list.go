@@ -48,9 +48,9 @@ var listCommand = &cobra.Command{
 				{Text: vmc.Name},
 				{Text: vmc.Network.IPAddress},
 				{Text: status},
-				{Align: simpletable.AlignCenter, Text: vmc.Specs.CPUs},
-				{Align: simpletable.AlignCenter, Text: vmc.Specs.Memory},
-				{Align: simpletable.AlignCenter, Text: vmc.Specs.Disk},
+				{Align: simpletable.AlignCenter, Text: vmc.Resources.CPUs},
+				{Align: simpletable.AlignCenter, Text: vmc.Resources.Memory},
+				{Align: simpletable.AlignCenter, Text: vmc.Resources.Disk},
 				{Text: vmc.Variant},
 			}
 			table.Body.Cells = append(table.Body.Cells, r)

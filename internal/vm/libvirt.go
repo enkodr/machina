@@ -16,7 +16,7 @@ type Libvirt struct{}
 func (h *Libvirt) Create(vm *VMConfig) error {
 	cfg := config.LoadConfig()
 	command := "virt-install"
-	ram, err := convertMemory(vm.Specs.Memory)
+	ram, err := convertMemory(vm.Resources.Memory)
 	if err != nil {
 		return errors.New("invalid memory")
 	}
@@ -25,7 +25,7 @@ func (h *Libvirt) Create(vm *VMConfig) error {
 		"--virt-type", "kvm",
 		"--name", vm.Name,
 		"--ram", ram,
-		fmt.Sprintf("--vcpus=%s", vm.Specs.CPUs),
+		fmt.Sprintf("--vcpus=%s", vm.Resources.CPUs),
 		"--os-variant", vm.Variant,
 		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, vm.Name, "disk.img")),
 		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, vm.Name, "seed.img")),
