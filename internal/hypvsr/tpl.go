@@ -67,13 +67,13 @@ func (f *LocalTemplate) Load() (KindManager, error) {
 
 	// Call the template parser
 	// If parsing the template content returns an error, it is propagated up
-	vm, err := parseTemplate(tpl)
+	instance, err := parseTemplate(tpl)
 	if err != nil {
 		return nil, err
 	}
 
 	// If there's no error, return the KindManager and a nil error
-	return vm, nil
+	return instance, nil
 }
 
 // Load is a method on the RemoteTemplate struct that implements the Templater interface.
@@ -110,6 +110,12 @@ func Load(name string) (KindManager, error) {
 
 	// Reads the YAML file
 	data, err := os.ReadFile(filepath.Join(cfg.Directories.Instances, name, config.GetFilename(config.InstanceFilename)))
+	if err != nil {
+		data, err = os.ReadFile(filepath.Join(cfg.Directories.Clusters, name, config.GetFilename(config.InstanceFilename)))
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// Loads the YAML to identify the km
 	var k kind
@@ -138,6 +144,7 @@ func Load(name string) (KindManager, error) {
 		if err != nil {
 			return nil, err
 		}
+		instance.(*Cluster).Runner = &osutil.CommandRunner{}
 		instance.(*Cluster).baseDir = filepath.Join(cfg.Directories.Clusters, instance.(*Cluster).Name)
 	default:
 		return nil, errors.New("unknown kind")
@@ -157,42 +164,62 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 	k := &kind{}
 	yaml.Unmarshal(tpl, k)
 
+	// Create the instance based on the kind
 	switch k.Kind {
 	case "Machine":
-		vm := &Instance{}
-		err := yaml.Unmarshal(tpl, vm)
+		// Unmarshal the Instance
+		instance := &Instance{}
+		err := yaml.Unmarshal(tpl, instance)
 		if err != nil {
 			return nil, err
 		}
-		err = vm.extend()
-		if err != nil {
-			return nil, err
-		}
-		vm.baseDir = cfg.Directories.Instances
-		vm.Runner = &osutil.CommandRunner{}
 
-		return vm, nil
+		// Extend the Instance
+		err = instance.extend()
+		if err != nil {
+			return nil, err
+		}
+
+		// Set the base directory
+		instance.baseDir = cfg.Directories.Instances
+		// Set the runner
+		instance.Runner = &osutil.CommandRunner{}
+
+		return instance, nil
 	case "Cluster":
+		// Unmarshal the Cluster
 		c := &Cluster{}
 		err := yaml.Unmarshal(tpl, c)
 		if err != nil {
 			return nil, err
 		}
+
+		// Set the base directory
 		c.baseDir = filepath.Join(cfg.Directories.Clusters, c.Name)
+
+		// Set the runner
+		c.Runner = &osutil.CommandRunner{}
+
+		// Extend the Cluster
 		expandedMachines := []Instance{}
 		for _, machine := range c.Instances {
+			// Extend the instance
 			machine.extend()
 
+			// Set the default number of replicas to 1
 			if machine.Replicas == 0 {
 				machine.Replicas = 1
 			}
 			for i := 0; i < machine.Replicas; i++ {
 				copiedMachine := machine
-
+				copiedMachine.Name = fmt.Sprintf("%s-%s", c.Name, copiedMachine.Name)
 				if machine.Replicas > 1 {
 					copiedMachine.Name = fmt.Sprintf("%s-%d", copiedMachine.Name, i+1)
 				}
 				copiedMachine.baseDir = c.baseDir
+				copiedMachine.Runner = &osutil.CommandRunner{}
+				copiedMachine.Hypervisor = getHypervisor()
+
 				expandedMachines = append(expandedMachines, copiedMachine)
 			}
 		}

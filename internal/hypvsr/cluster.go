@@ -3,14 +3,17 @@ package hypvsr
 import (
 	"errors"
 	"os"
+
+	"github.com/enkodr/machina/internal/osutil"
 )
 
 // Cluster holds the configuration details for a cluster of machines
 type Cluster struct {
 	baseDir   string
-	Kind      string     `yaml:"kind"`     // Kind of the resource, should be 'Cluster'
-	Name      string     `yaml:"name"`     // Name of the cluster. Must be unique in the system
-	Instances []Instance `yaml:"machines"` // List of machines in the cluster
+	Kind      string        `yaml:"kind"`     // Kind of the resource, should be 'Cluster'
+	Name      string        `yaml:"name"`     // Name of the cluster. Must be unique in the system
+	Instances []Instance    `yaml:"machines"` // List of machines in the cluster
+	Runner    osutil.Runner `yaml:"-"`
 }
 
 // CreateDir method creates the directory where the instance files will be stored

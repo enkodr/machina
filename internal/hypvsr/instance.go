@@ -164,9 +164,6 @@ func (instance *Instance) Prepare() error {
 		return err
 	}
 
-	// Set the hypervisor
-	instance.Hypervisor = getHypervisor()
-
 	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, config.GetFilename(config.InstanceFilename)), vmYaml, 0644)
 	if err != nil {
 		return err

@@ -80,6 +80,9 @@ func convertMemory(memory string) (string, error) {
 }
 
 func getHypervisor() Hypervisor {
+	if cfg == nil {
+		cfg, _ = config.LoadConfig()
+	}
 	if cfg.Hypervisor == "qemu" {
 		return &Qemu{}
 	} else {
