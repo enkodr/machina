@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/enkodr/machina/internal/config"
+	"github.com/enkodr/machina/internal/osutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -138,24 +139,25 @@ func TestMachine_DownloadImage(t *testing.T) {
 	mockServer.Close()
 }
 
-// MockCreateDiskRunner is a mock implementation of the Runner interface using the testify/mock package.
-
 // MockRunner is a mock implementation of the Runner interface.
 type MockRunner struct {
 	Command string
 	Args    []string
+	Options []osutil.Option
 	Output  string
 	Error   error
 	Called  bool
 }
 
 // RunCommand is the implementation of the Runner interface for the mock.
-func (m *MockRunner) RunCommand(command string, args []string) (string, error) {
+func (m *MockRunner) RunCommand(command string, args []string, options ...osutil.Option) (string, error) {
 	m.Called = true
 	m.Command = command
 	m.Args = args
+	m.Options = options
 	return m.Output, m.Error
 }
+
 func TestCreateInstanceDisk(t *testing.T) {
 	// Create a temporary directory for testing
 	tmpDir := t.TempDir()

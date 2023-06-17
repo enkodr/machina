@@ -410,6 +410,28 @@ func (instance *Instance) GetVMs() []Instance {
 
 // Creates the script files from the template
 func (instance *Instance) createScriptFiles() error {
+	// Create the service file
+	err := instance.createServiceFile()
+	if err != nil {
+		return err
+	}
+
+	// Create the install script file
+	err = instance.createInstallScriptFile()
+	if err != nil {
+		return err
+	}
+
+	// Create the startup script file
+	err = instance.createStartupScriptFile()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Creates the service file
+func (instance *Instance) createServiceFile() error {
 	err := os.MkdirAll(filepath.Join(instance.baseDir, instance.Name, "bin"), 0755)
 	if err != nil {
 		return nil
@@ -433,9 +455,14 @@ WantedBy=multi-user.target
 
 	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, "bin/machina.service"), []byte(sysDSvc), 0744)
 	if err != nil {
-		return nil
+		return err
 	}
 
+	return nil
+}
+
+// Creates the install script file
+func (instance *Instance) createInstallScriptFile() error {
 	// Install script
 	installScript := `
 sudo mkdir -p /etc/machina
@@ -449,13 +476,19 @@ sudo systemctl enable machina.service
 sudo systemctl start machina.service
 `
 	instance.Scripts.Install += installScript
-	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, "bin/install.sh"), []byte(instance.Scripts.Install), 0744)
+	err := os.WriteFile(filepath.Join(instance.baseDir, instance.Name, "bin/install.sh"), []byte(instance.Scripts.Install), 0744)
 	if err != nil {
-		return nil
+		return err
 	}
 
+	return nil
+}
+
+// Create the instance startup script file
+func (instance *Instance) createStartupScriptFile() error {
 	// Boot script
 	var mountName string
+
 	if cfg.Hypervisor == "qemu" {
 		mountName = instance.Mount.Name
 	} else {
@@ -472,14 +505,14 @@ fi
 exit 0
 `, mountName, instance.Mount.GuestPath)
 
-	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, "bin/machina"), []byte(initScript), 0744)
+	err := os.WriteFile(filepath.Join(instance.baseDir, instance.Name, "bin/machina"), []byte(initScript), 0744)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	err = os.WriteFile(filepath.Join(instance.baseDir, instance.Name, "bin/machinarc"), []byte(instance.Scripts.Init), 0644)
 	if err != nil {
-		return nil
+		return err
 	}
 	return nil
 }

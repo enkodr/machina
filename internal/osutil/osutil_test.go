@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -41,15 +42,16 @@ func TestCommandRunner_RunNonExisingCommand(t *testing.T) {
 }
 
 func TestCommandRunner_RunCommandNonExistingFile(t *testing.T) {
+	// Define the command to run
 	runner := CommandRunner{}
 	command := "ls"
 	args := []string{"nonexistent-file"}
 
+	// Run the command
 	_, err := runner.RunCommand(command, args)
 
-	if err == nil {
-		t.Error("Expected an error, got nil")
-	}
+	// Assert that an error is returned
+	assert.Error(t, err, "Expected an error, got nil")
 }
 
 func TestChecksum(t *testing.T) {
@@ -102,14 +104,87 @@ func TestChecksum(t *testing.T) {
 
 // Helper function to calculate SHA256 checksum
 func sha256Checksum(data []byte) string {
+	// Calculate the SHA256 hash of the image data
 	hasher := sha256.New()
 	hasher.Write(data)
+
+	// Return the SHA256 checksum
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 // Helper function to calculate SHA512 checksum
 func sha512Checksum(data []byte) string {
+	// Calculate the SHA512 hash of the image data
 	hasher := sha512.New()
 	hasher.Write(data)
+
+	// Return the SHA512 checksum
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// MockRunner is a mock implementation of the Runner interface.
+type MockRunner struct {
+	Command string
+	Args    []string
+	Options []Option
+	Output  string
+	Error   error
+	Called  bool
+}
+
+// RunCommand is the implementation of the Runner interface for the mock.
+func (m *MockRunner) RunCommand(command string, args []string, options ...Option) (string, error) {
+	m.Called = true
+	m.Command = command
+	m.Args = args
+	m.Options = options
+	return m.Output, m.Error
+}
+
+func TestChecksumWithValidChecksum(t *testing.T) {
+	// Create a temporary file for testing
+	tmpFile := createTempFile(t, "Hello, World!")
+
+	// Calculate the SHA256 checksum of the file
+	hash := sha256.New()
+	hash.Write([]byte("Hello, World!"))
+	checksum := "sha256:" + hex.EncodeToString(hash.Sum(nil))
+
+	// Verify the checksum
+	result := Checksum(tmpFile, checksum)
+
+	// Assert that the result is true
+	assert.True(t, result, "Expected checksum verification to pass")
+}
+
+func TestChecksumWithInvalidChecksum(t *testing.T) {
+	// Create a temporary file for testing
+	tmpFile := createTempFile(t, "Hello, World!")
+
+	// Specify an incorrect checksum
+	incorrectChecksum := "sha256:123456789"
+
+	// Verify the checksum
+	result := Checksum(tmpFile, incorrectChecksum)
+
+	// Assert that the result is false
+	assert.False(t, result, "Expected checksum verification to fail")
+}
+
+func createTempFile(t *testing.T, content string) string {
+	// Create a temporary file for testing
+	tmpFile, err := ioutil.TempFile("", "tempfile")
+	if err != nil {
+		t.Fatal("Failed to create temporary file:", err)
+	}
+
+	// defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+
+	// Write the content to the temporary file
+	_, err = io.WriteString(tmpFile, content)
+	assert.Nil(t, err)
+
+	// Return the path to the temporary file
+	return tmpFile.Name()
 }
