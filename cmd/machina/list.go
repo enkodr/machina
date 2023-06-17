@@ -2,8 +2,8 @@ package machina
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
-	"path/filepath"
 
 	"github.com/alexeyco/simpletable"
 	"github.com/enkodr/machina/internal/config"
@@ -27,40 +27,16 @@ var listCommand = &cobra.Command{
 			fmt.Fprintf(os.Stderr, "error loading configuration")
 		}
 
-		type inst struct {
-			name    string
-			cluster string
-		}
-		var instances []inst
+		var instances []fs.DirEntry
 		// Get's a list of all the instances created
 		dirs, _ := os.ReadDir(cfg.Directories.Instances)
-		for _, dir := range dirs {
-			i := inst{
-				name: dir.Name(),
-			}
-			instances = append(instances, i)
-		}
-
-		// Get's a list of all the instances on all the created clusters
-		dirs, _ = os.ReadDir(cfg.Directories.Clusters)
-		for _, dir := range dirs {
-			d := filepath.Join(cfg.Directories.Clusters, dir.Name())
-			newDirs, _ := os.ReadDir(d)
-			for _, newDir := range newDirs {
-				i := inst{
-					name:    fmt.Sprintf("%s/%s", dir.Name(), newDir.Name()),
-					cluster: dir.Name(),
-				}
-				instances = append(instances, i)
-			}
-		}
+		instances = append(instances, dirs...)
 
 		// Create a new visual table and set the header titles
 		table := simpletable.New()
 		table.Header = &simpletable.Header{
 			Cells: []*simpletable.Cell{
 				{Align: simpletable.AlignCenter, Text: "VM NAME"},
-				{Align: simpletable.AlignCenter, Text: "CLUSTER"},
 				{Align: simpletable.AlignCenter, Text: "IP ADDRESS"},
 				{Align: simpletable.AlignCenter, Text: "STATUS"},
 				{Align: simpletable.AlignCenter, Text: "CPUS"},
@@ -72,7 +48,7 @@ var listCommand = &cobra.Command{
 
 		// Add the content for all the rows
 		for _, instance := range instances {
-			kind, _ := hypvsr.Load(instance.name)
+			kind, _ := hypvsr.Load(instance.Name())
 			vms := kind.GetVMs()
 			for _, vm := range vms {
 				status, err := vm.Status()
@@ -82,7 +58,6 @@ var listCommand = &cobra.Command{
 
 				r := []*simpletable.Cell{
 					{Text: vm.Name},
-					{Text: instance.cluster},
 					{Text: vm.Network.IPAddress},
 					{Text: status},
 					{Align: simpletable.AlignCenter, Text: vm.Resources.CPUs},

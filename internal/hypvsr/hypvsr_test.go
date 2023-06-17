@@ -38,7 +38,6 @@ func TestNewInstance(t *testing.T) {
 		Directories: config.Directories{
 			Images:    filepath.Join(tmpDir, "/path/to/images"),
 			Instances: filepath.Join(tmpDir, "/path/to/instances"),
-			Clusters:  filepath.Join(tmpDir, "/path/to/clusters"),
 		},
 	}
 

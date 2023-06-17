@@ -111,10 +111,7 @@ func Load(name string) (KindManager, error) {
 	// Reads the YAML file
 	data, err := os.ReadFile(filepath.Join(cfg.Directories.Instances, name, config.GetFilename(config.InstanceFilename)))
 	if err != nil {
-		data, err = os.ReadFile(filepath.Join(cfg.Directories.Clusters, name, config.GetFilename(config.InstanceFilename)))
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	// Loads the YAML to identify the km
@@ -145,7 +142,6 @@ func Load(name string) (KindManager, error) {
 			return nil, err
 		}
 		instance.(*Cluster).Runner = &osutil.CommandRunner{}
-		instance.(*Cluster).baseDir = filepath.Join(cfg.Directories.Clusters, instance.(*Cluster).Name)
 	default:
 		return nil, errors.New("unknown kind")
 	}
@@ -184,6 +180,8 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 		instance.baseDir = cfg.Directories.Instances
 		// Set the runner
 		instance.Runner = &osutil.CommandRunner{}
+		// Set the hypervisor
+		instance.Hypervisor = getHypervisor()
 
 		return instance, nil
 	case "Cluster":
@@ -193,9 +191,6 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		// Set the base directory
-		c.baseDir = filepath.Join(cfg.Directories.Clusters, c.Name)
 
 		// Set the runner
 		c.Runner = &osutil.CommandRunner{}
@@ -216,7 +211,6 @@ func parseTemplate(tpl []byte) (KindManager, error) {
 				if machine.Replicas > 1 {
 					copiedMachine.Name = fmt.Sprintf("%s-%d", copiedMachine.Name, i+1)
 				}
-				copiedMachine.baseDir = c.baseDir
 				copiedMachine.Runner = &osutil.CommandRunner{}
 				copiedMachine.Hypervisor = getHypervisor()
 

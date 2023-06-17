@@ -50,7 +50,6 @@ type Config struct {
 type Directories struct {
 	Images    string `yaml:"images,omitempty"`
 	Instances string `yaml:"instances,omitempty"`
-	Clusters  string `yaml:"clusters,omitempty"`
 }
 
 var (
@@ -109,7 +108,6 @@ func createDefaultConfig(cfgFile string) (*Config, error) {
 		Directories: Directories{
 			Images:    getDefaultImagePath(),
 			Instances: getDefaultInstancesPath(),
-			Clusters:  getDefaultClustersPath(),
 		},
 	}
 
@@ -137,13 +135,7 @@ func getDefaultImagePath() string {
 // GetDefaultInstancesPath returns the default path for instances
 func getDefaultInstancesPath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, baseDir, "instances/isolated")
-}
-
-// GetDefaultClustersPath returns the default path for clusters
-func getDefaultClustersPath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, baseDir, "instances/clusters")
+	return filepath.Join(home, baseDir, "instances")
 }
 
 // GetHypervisor returns the hypervisor to be used

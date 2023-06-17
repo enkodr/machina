@@ -62,7 +62,7 @@ directories:
 	expectedConfig := &Config{
 		Hypervisor:  "test-hypervisor",
 		Connection:  "test-connection",
-		Directories: Directories{Images: "/path/to/images", Instances: "/path/to/instances", Clusters: "/path/to/clusters"},
+		Directories: Directories{Images: "/path/to/images", Instances: "/path/to/instances"},
 	}
 
 	actualConfig, err := loadConfigFromFile(tempFile.Name())
@@ -89,7 +89,6 @@ func TestCreateDefaultConfig(t *testing.T) {
 		Directories: Directories{
 			Images:    getDefaultImagePath(),
 			Instances: getDefaultInstancesPath(),
-			Clusters:  getDefaultClustersPath(),
 		},
 	}
 

@@ -26,15 +26,6 @@ func bashCompleteInstanceNames(cmd *cobra.Command, args []string, toComplete str
 		instanceList = append(instanceList, instance.Name())
 	}
 
-	// Get cluster names
-	instances, err = os.ReadDir(cfg.Directories.Clusters)
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveDefault
-	}
-	for _, instance := range instances {
-		instanceList = append(instanceList, instance.Name())
-	}
-
 	// Return the list of instances created
 	return instanceList, cobra.ShellCompDirectiveNoFileComp
 }

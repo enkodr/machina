@@ -29,27 +29,23 @@ func TestEnsureDirectories(t *testing.T) {
 		Directories: config.Directories{
 			Images:    filepath.Join(tempDir, "/path/to/images"),
 			Instances: filepath.Join(tempDir, "/path/to/instances"),
-			Clusters:  filepath.Join(tempDir, "/path/to/clusters"),
 		},
 	}
 
 	EnsureDirectories(cfg)
 	assert.True(t, directoryExists(cfg.Directories.Images))
 	assert.True(t, directoryExists(cfg.Directories.Instances))
-	assert.True(t, directoryExists(cfg.Directories.Clusters))
 
 	// Test case when directory creation fails
 	cfg = &config.Config{
 		Directories: config.Directories{
 			Images:    "/invalid/path", // Invalid path
 			Instances: "/path/to/instances",
-			Clusters:  "/path/to/clusters",
 		},
 	}
 	EnsureDirectories(cfg)
 	assert.False(t, directoryExists(cfg.Directories.Images))
 	assert.False(t, directoryExists(cfg.Directories.Instances))
-	assert.False(t, directoryExists(cfg.Directories.Clusters))
 }
 
 func TestGetFilenameFromURL(t *testing.T) {

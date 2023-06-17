@@ -56,7 +56,6 @@ func TestMachine_Prepare(t *testing.T) {
 		Directories: config.Directories{
 			Images:    filepath.Join(tempDir, "images"),
 			Instances: filepath.Join(tempDir, "instances"),
-			Clusters:  filepath.Join(tempDir, "clusters"),
 		},
 	}
 

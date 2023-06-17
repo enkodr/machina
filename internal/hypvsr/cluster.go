@@ -1,15 +1,11 @@
 package hypvsr
 
 import (
-	"errors"
-	"os"
-
 	"github.com/enkodr/machina/internal/osutil"
 )
 
 // Cluster holds the configuration details for a cluster of machines
 type Cluster struct {
-	baseDir   string
 	Kind      string        `yaml:"kind"`     // Kind of the resource, should be 'Cluster'
 	Name      string        `yaml:"name"`     // Name of the cluster. Must be unique in the system
 	Instances []Instance    `yaml:"machines"` // List of machines in the cluster
@@ -18,18 +14,8 @@ type Cluster struct {
 
 // CreateDir method creates the directory where the instance files will be stored
 func (c *Cluster) CreateDir() error {
-	// Check if VM already exists
-	_, err := os.Stat(c.baseDir)
-	if !os.IsNotExist(err) {
-		return errors.New("cluster already exists")
-	}
-
-	// Create the cluster direcotry
-	os.Mkdir(c.baseDir, 0755)
-
 	// Create the directory for each of the cluster instances
 	for _, vm := range c.Instances {
-		vm.baseDir = c.baseDir
 		err := vm.CreateDir()
 		if err != nil {
 			return err
