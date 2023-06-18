@@ -1,10 +1,8 @@
 package hypvsr
 
 import (
-	"path/filepath"
 	"testing"
 
-	"github.com/enkodr/machina/internal/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,34 +21,8 @@ func (m *MockKindManager) CreateDisks() error               { return nil }
 func (m *MockKindManager) Wait() error                      { return nil }
 func (m *MockKindManager) Shell() error                     { return nil }
 func (m *MockKindManager) RunInitScripts() error            { return nil }
-func (m *MockKindManager) GetVMs() []Instance               { return nil }
+func (m *MockKindManager) GetVMs() []Machine                { return nil }
 func (m *MockKindManager) CreateDir() error                 { return nil }
-
-func TestNewInstance(t *testing.T) {
-	// Create a temporary directory
-	tmpDir := t.TempDir()
-
-	// Set up any necessary dependencies or mocks
-	mockTemplate := &MockTemplate{name: "default"}
-
-	// Set up the desired configuration
-	cfg = &config.Config{
-		Directories: config.Directories{
-			Images:    filepath.Join(tmpDir, "/path/to/images"),
-			Instances: filepath.Join(tmpDir, "/path/to/instances"),
-		},
-	}
-
-	// Call the NewInstance function
-	kind, err := NewInstance(mockTemplate)
-
-	// Assert that the error is nil
-	assert.Nil(t, err)
-
-	// Assert that the returned KindManager is not nil
-	assert.NotNil(t, kind)
-
-}
 
 func TestConvertMemory(t *testing.T) {
 	// Test cases for converting memory sizes

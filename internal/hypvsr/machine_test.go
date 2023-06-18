@@ -20,18 +20,18 @@ func TestMachine_CreateDir(t *testing.T) {
 	tmpDir := t.TempDir()
 	defer os.RemoveAll(tmpDir)
 
-	// Initialize a Machine instance for testing
-	instance := Instance{
+	// Initialize a Machine machine for testing
+	machine := Machine{
 		baseDir: tmpDir,
 		Name:    "test-machine",
 	}
 
 	// Test case: Machine directory does not exist
-	err := instance.CreateDir()
+	err := machine.CreateDir()
 	assert.NoError(t, err, "Error creating machine directory")
 
 	// Test case: Machine directory already exists
-	err = instance.CreateDir()
+	err = machine.CreateDir()
 	assert.Error(t, err, "Machine directory should already exist")
 }
 
@@ -40,8 +40,8 @@ func TestMachine_Prepare(t *testing.T) {
 	tempDir := t.TempDir()
 	defer os.RemoveAll(tempDir)
 
-	// Initialize a Machine instance for testing
-	instance := Instance{
+	// Initialize a Machine machine for testing
+	machine := Machine{
 		Name:    "test-machine",
 		baseDir: tempDir,
 		Credentials: Credentials{
@@ -60,28 +60,28 @@ func TestMachine_Prepare(t *testing.T) {
 	}
 
 	// Create the machine directory for testing
-	os.Mkdir(filepath.Join(tempDir, instance.Name), 0755)
+	os.Mkdir(filepath.Join(tempDir, machine.Name), 0755)
 
-	err := instance.Prepare()
+	err := machine.Prepare()
 	assert.NoError(t, err, "Error preparing machine")
 
 	// Verify network configuration file
-	networkPath := filepath.Join(tempDir, instance.Name, config.GetFilename(config.NetworkFilename))
+	networkPath := filepath.Join(tempDir, machine.Name, config.GetFilename(config.NetworkFilename))
 	_, err = os.Stat(networkPath)
 	assert.NoError(t, err, "Network configuration file not found")
 
 	// Verify user data file
-	userdataPath := filepath.Join(tempDir, instance.Name, config.GetFilename(config.UserdataFilename))
+	userdataPath := filepath.Join(tempDir, machine.Name, config.GetFilename(config.UserdataFilename))
 	_, err = os.Stat(userdataPath)
 	assert.NoError(t, err, "User data file not found")
 
 	// Verify private key file
-	privateKeyPath := filepath.Join(tempDir, instance.Name, config.GetFilename(config.PrivateKeyFilename))
+	privateKeyPath := filepath.Join(tempDir, machine.Name, config.GetFilename(config.PrivateKeyFilename))
 	_, err = os.Stat(privateKeyPath)
 	assert.NoError(t, err, "Private key file not found")
 
 	// Verify machine file
-	machinePath := filepath.Join(tempDir, instance.Name, config.GetFilename(config.InstanceFilename))
+	machinePath := filepath.Join(tempDir, machine.Name, config.GetFilename(config.InstanceFilename))
 	_, err = os.Stat(machinePath)
 	assert.NoError(t, err, "Machine file not found")
 }
@@ -112,8 +112,8 @@ func TestMachine_DownloadImage(t *testing.T) {
 		},
 	}
 
-	// Initialize a Machine instance for testing
-	instance := Instance{
+	// Initialize a Machine machine for testing
+	machine := Machine{
 		Image: Image{
 			URL:      fmt.Sprintf("%s/file.txt", mockServer.URL),
 			Checksum: checksum,
@@ -121,17 +121,17 @@ func TestMachine_DownloadImage(t *testing.T) {
 	}
 
 	// Test case: Image is already downloaded
-	err := instance.DownloadImage()
+	err := machine.DownloadImage()
 	assert.NoError(t, err, "Error downloading image")
 
 	// Test case: Image needs to be downloaded
-	instance.Image.URL = mockServer.URL + "/new-image.qcow2"
-	err = instance.DownloadImage()
+	machine.Image.URL = mockServer.URL + "/new-image.qcow2"
+	err = machine.DownloadImage()
 	assert.NoError(t, err, "Error downloading new image")
 
 	// Test case: Invalid image URL
-	instance.Image.URL = "invalid-url"
-	err = instance.DownloadImage()
+	machine.Image.URL = "invalid-url"
+	err = machine.DownloadImage()
 	assert.Error(t, err, "Invalid image URL")
 
 	// Close the mock server
@@ -157,7 +157,7 @@ func (m *MockRunner) RunCommand(command string, args []string, options ...osutil
 	return m.Output, m.Error
 }
 
-func TestCreateInstanceDisk(t *testing.T) {
+func TestCreateMachineDisk(t *testing.T) {
 	// Create a temporary directory for testing
 	tmpDir := t.TempDir()
 	defer os.RemoveAll(tmpDir)
@@ -167,8 +167,8 @@ func TestCreateInstanceDisk(t *testing.T) {
 	imagePath := filepath.Join(tmpDir, "image.img")
 	os.WriteFile(imagePath, fileContent, 0644)
 
-	// Create an instance of your struct
-	instance := &Instance{
+	// Create an machine of your struct
+	machine := &Machine{
 		Image: Image{
 			URL: imagePath,
 		},
@@ -185,10 +185,10 @@ func TestCreateInstanceDisk(t *testing.T) {
 		},
 	}
 
-	err := instance.createInstanceDisk()
+	err := machine.createInstanceDisk()
 
 	// Verify the first RunCommand call to create the disk
-	mockRunner := instance.Runner.(*MockRunner)
+	mockRunner := machine.Runner.(*MockRunner)
 	expectedCommand := "qemu-img"
 	expectedArgs := []string{
 		"create",
@@ -208,16 +208,16 @@ func TestCreateSeedDisk(t *testing.T) {
 	tmpDir := t.TempDir()
 	defer os.RemoveAll(tmpDir)
 
-	// Create an instance of your struct
-	instance := &Instance{
+	// Create an machine of your struct
+	machine := &Machine{
 		Runner: &MockRunner{},
 		// Set other necessary fields for the test
 	}
 
-	err := instance.createSeedDisk()
+	err := machine.createSeedDisk()
 
 	// Verify the RunCommand call to create the seed disk
-	mockRunner := instance.Runner.(*MockRunner)
+	mockRunner := machine.Runner.(*MockRunner)
 	expectedCommand := "cloud-localds"
 	expectedArgs := []string{
 		"--network-config=network.cfg",

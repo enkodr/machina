@@ -29,7 +29,7 @@ var deleteCommand = &cobra.Command{
 			name = args[0]
 		}
 		// Load the instance data
-		instance, err := hypvsr.Load(name)
+		instance, err := hypvsr.GetMachine(name)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "the instance %q doesn't exist\n", name)
 			return

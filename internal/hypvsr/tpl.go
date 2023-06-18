@@ -23,7 +23,7 @@ var endpoint = "https://raw.githubusercontent.com/enkodr/machina/main/templates"
 type Templater interface {
 	// Load method is responsible for loading the template
 	// and returning an instance of KindManager and error if any occurs during the loading
-	Load() (KindManager, error)
+	Load() (*Instance, error)
 }
 
 // LocalTemplate represents a local file-based template
@@ -58,7 +58,7 @@ func NewTemplate(name string) Templater {
 
 // Load is a method on the LocalTemplate struct that implements the Templater interface.
 // It reads the content of the template from the local file system, parses it, and returns a corresponding KindManager.
-func (f *LocalTemplate) Load() (KindManager, error) {
+func (f *LocalTemplate) Load() (*Instance, error) {
 	// Reads the file named by filename and returns the contents
 	tpl, err := os.ReadFile(f.path)
 	if err != nil {
@@ -78,7 +78,7 @@ func (f *LocalTemplate) Load() (KindManager, error) {
 
 // Load is a method on the RemoteTemplate struct that implements the Templater interface.
 // It reads the content of the template from the local file system, parses it, and returns a corresponding KindManager.
-func (f *RemoteTemplate) Load() (KindManager, error) {
+func (f *RemoteTemplate) Load() (*Instance, error) {
 	// Set the URL from where to download the file
 	tplFile := fmt.Sprintf("%s/%s.yaml", endpoint, f.name)
 
@@ -99,8 +99,92 @@ func (f *RemoteTemplate) Load() (KindManager, error) {
 	return vm, nil
 }
 
-// Load loads the YAML file content into the struct
-func Load(name string) (KindManager, error) {
+// parse the template from yaml to struct
+func parseTemplate(tpl []byte) (*Instance, error) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// Identify the kind
+	k := &kind{}
+	yaml.Unmarshal(tpl, k)
+
+	instance := &Instance{
+		Kind:   k.Kind,
+		Config: *cfg,
+	}
+	// Create the instance based on the kind
+	switch k.Kind {
+	case "Machine":
+		// Unmarshal the Instance
+		machine := &Machine{}
+		err := yaml.Unmarshal(tpl, machine)
+		if err != nil {
+			return nil, err
+		}
+
+		// Extend the Instance
+		err = machine.extend()
+		if err != nil {
+			return nil, err
+		}
+
+		// Set the base directory
+		machine.baseDir = cfg.Directories.Instances
+		// Set the runner
+		machine.Runner = &osutil.CommandRunner{}
+		// Set the hypervisor
+		machine.Hypervisor = getHypervisor()
+
+		instance.Machines = append(instance.Machines, *machine)
+		break
+	case "Cluster":
+		// Unmarshal the Cluster
+		c := &Cluster{}
+		err := yaml.Unmarshal(tpl, c)
+		if err != nil {
+			return nil, err
+		}
+
+		// Extend the Cluster
+		expandedMachines := []Machine{}
+		for _, machine := range c.Instances {
+			// Extend the instance
+			machine.extend()
+
+			// Set the default number of replicas to 1
+			if machine.Replicas == 0 {
+				machine.Replicas = 1
+			}
+			for i := 0; i < machine.Replicas; i++ {
+				copiedMachine := machine
+				// Set the name of the machine to include the cluster name
+				copiedMachine.Name = fmt.Sprintf("%s-%s", c.Name, copiedMachine.Name)
+				if machine.Replicas > 1 {
+					// Set the name of the machine to have an index if more than one replica is defined
+					copiedMachine.Name = fmt.Sprintf("%s-%d", copiedMachine.Name, i+1)
+				}
+				// Set the CommandRunner of the machine
+				copiedMachine.Runner = &osutil.CommandRunner{}
+				// Set the Hypervisor to use
+				copiedMachine.Hypervisor = getHypervisor()
+
+				expandedMachines = append(expandedMachines, copiedMachine)
+			}
+			instance.Machines = append(instance.Machines, machine)
+		}
+		break
+	default:
+		return nil, errors.New("unsupported kind")
+	}
+
+	return instance, nil
+
+}
+
+// GetMachine loads the YAML file content into the struct
+func GetMachine(name string) (*Machine, error) {
 	// Loads the configuration
 	var err error
 	cfg, err = config.LoadConfig()
@@ -114,118 +198,19 @@ func Load(name string) (KindManager, error) {
 		return nil, err
 	}
 
-	// Loads the YAML to identify the km
-	var k kind
-	err = yaml.Unmarshal(data, &k)
+	machine := &Machine{}
+	// Unmarshal the Machine
+	err = yaml.Unmarshal(data, machine)
 	if err != nil {
 		return nil, err
 	}
+	machine.Runner = &osutil.CommandRunner{}
+	machine.Hypervisor = getHypervisor()
 
-	var instance KindManager
-	switch k.Kind {
-	case "Machine":
-		instance = &Instance{}
-		// Unmarshal the Machine
-		err = yaml.Unmarshal(data, instance)
-		if err != nil {
-			return nil, err
-		}
-		instance.(*Instance).Runner = &osutil.CommandRunner{}
-		instance.(*Instance).baseDir = cfg.Directories.Instances
-		instance.(*Instance).Hypervisor = getHypervisor()
-		break
-	case "Cluster":
-		instance = &Cluster{}
-		// Unmarshal the Machine
-		err = yaml.Unmarshal(data, instance)
-		if err != nil {
-			return nil, err
-		}
-		instance.(*Cluster).Runner = &osutil.CommandRunner{}
-	default:
-		return nil, errors.New("unknown kind")
-	}
-
-	return instance, nil
+	return machine, nil
 }
 
-// parse the template from yaml to struct
-func parseTemplate(tpl []byte) (KindManager, error) {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	// Identify the kind
-	k := &kind{}
-	yaml.Unmarshal(tpl, k)
-
-	// Create the instance based on the kind
-	switch k.Kind {
-	case "Machine":
-		// Unmarshal the Instance
-		instance := &Instance{}
-		err := yaml.Unmarshal(tpl, instance)
-		if err != nil {
-			return nil, err
-		}
-
-		// Extend the Instance
-		err = instance.extend()
-		if err != nil {
-			return nil, err
-		}
-
-		// Set the base directory
-		instance.baseDir = cfg.Directories.Instances
-		// Set the runner
-		instance.Runner = &osutil.CommandRunner{}
-		// Set the hypervisor
-		instance.Hypervisor = getHypervisor()
-
-		return instance, nil
-	case "Cluster":
-		// Unmarshal the Cluster
-		c := &Cluster{}
-		err := yaml.Unmarshal(tpl, c)
-		if err != nil {
-			return nil, err
-		}
-
-		// Set the runner
-		c.Runner = &osutil.CommandRunner{}
-
-		// Extend the Cluster
-		expandedMachines := []Instance{}
-		for _, machine := range c.Instances {
-			// Extend the instance
-			machine.extend()
-
-			// Set the default number of replicas to 1
-			if machine.Replicas == 0 {
-				machine.Replicas = 1
-			}
-			for i := 0; i < machine.Replicas; i++ {
-				copiedMachine := machine
-				copiedMachine.Name = fmt.Sprintf("%s-%s", c.Name, copiedMachine.Name)
-				if machine.Replicas > 1 {
-					copiedMachine.Name = fmt.Sprintf("%s-%d", copiedMachine.Name, i+1)
-				}
-				copiedMachine.Runner = &osutil.CommandRunner{}
-				copiedMachine.Hypervisor = getHypervisor()
-
-				expandedMachines = append(expandedMachines, copiedMachine)
-			}
-		}
-		c.Instances = expandedMachines
-
-		return c, nil
-	}
-
-	return nil, errors.New("unsupported kind")
-}
-
-func (vm *Instance) extend() error {
+func (vm *Machine) extend() error {
 	for vm.Extends != "" {
 		tplFile := fmt.Sprintf("%s/%s.yaml", endpoint, vm.Extends)
 		baseTpl, err := netutil.Download(tplFile)
@@ -233,7 +218,7 @@ func (vm *Instance) extend() error {
 			return err
 		}
 
-		base := &Instance{}
+		base := &Machine{}
 		err = yaml.Unmarshal(baseTpl, base)
 		if err != nil {
 			return err

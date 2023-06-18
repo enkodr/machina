@@ -48,7 +48,7 @@ var listCommand = &cobra.Command{
 
 		// Add the content for all the rows
 		for _, instance := range instances {
-			kind, _ := hypvsr.Load(instance.Name())
+			kind, _ := hypvsr.GetMachine(instance.Name())
 			vms := kind.GetVMs()
 			for _, vm := range vms {
 				status, err := vm.Status()

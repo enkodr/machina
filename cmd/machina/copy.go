@@ -41,7 +41,7 @@ var copyCommand = &cobra.Command{
 		}
 
 		// Get the instance from the configuration file
-		instance, err := hypvsr.Load(name)
+		instance, err := hypvsr.GetMachine(name)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Instance %q does not exist\n", name)
 			os.Exit(1)

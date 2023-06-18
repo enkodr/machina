@@ -12,11 +12,11 @@ import (
 
 type Qemu struct{}
 
-func (h *Qemu) Create(vm *Instance) error {
+func (h *Qemu) Create(vm *Machine) error {
 	return h.Start(vm)
 }
 
-func (h *Qemu) Start(vm *Instance) error {
+func (h *Qemu) Start(vm *Machine) error {
 	command := "qemu-system-x86_64"
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -55,7 +55,7 @@ func (h *Qemu) Start(vm *Instance) error {
 	return nil
 }
 
-func (h *Qemu) Stop(vm *Instance) error {
+func (h *Qemu) Stop(vm *Machine) error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func (h *Qemu) Stop(vm *Instance) error {
 	return nil
 }
 
-func (h *Qemu) ForceStop(vm *Instance) error {
+func (h *Qemu) ForceStop(vm *Machine) error {
 	command := "kill"
 	args := []string{
 		"-9",
@@ -91,7 +91,7 @@ func (h *Qemu) ForceStop(vm *Instance) error {
 	return nil
 }
 
-func (h *Qemu) Status(vm *Instance) (string, error) {
+func (h *Qemu) Status(vm *Machine) (string, error) {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return "", err
@@ -102,7 +102,7 @@ func (h *Qemu) Status(vm *Instance) (string, error) {
 	return "running", nil
 }
 
-func (h *Qemu) Delete(vm *Instance) error {
+func (h *Qemu) Delete(vm *Machine) error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return err
@@ -138,7 +138,7 @@ func getHypervisorDriver() string {
 	return driver
 }
 
-func (h *Qemu) getPID(vm *Instance) string {
+func (h *Qemu) getPID(vm *Machine) string {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return "err"

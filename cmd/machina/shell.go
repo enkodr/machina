@@ -18,7 +18,7 @@ var shellCommand = &cobra.Command{
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load the instance data
-		instance, err := hypvsr.Load(name)
+		instance, err := hypvsr.GetMachine(name)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Instance %q does not exist\n", name)
 			os.Exit(1)

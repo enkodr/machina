@@ -1,15 +1,10 @@
 package hypvsr
 
-import (
-	"github.com/enkodr/machina/internal/osutil"
-)
-
 // Cluster holds the configuration details for a cluster of machines
 type Cluster struct {
-	Kind      string        `yaml:"kind"`     // Kind of the resource, should be 'Cluster'
-	Name      string        `yaml:"name"`     // Name of the cluster. Must be unique in the system
-	Instances []Instance    `yaml:"machines"` // List of machines in the cluster
-	Runner    osutil.Runner `yaml:"-"`
+	Kind      string    `yaml:"kind"`     // Kind of the resource, should be 'Cluster'
+	Name      string    `yaml:"name"`     // Name of the cluster. Must be unique in the system
+	Instances []Machine `yaml:"machines"` // List of machines in the cluster
 }
 
 // CreateDir method creates the directory where the instance files will be stored
@@ -153,6 +148,6 @@ func (c *Cluster) Shell() error {
 }
 
 // GetVMs method calls the GetVMs method for each instance
-func (c *Cluster) GetVMs() []Instance {
+func (c *Cluster) GetVMs() []Machine {
 	return c.Instances
 }
