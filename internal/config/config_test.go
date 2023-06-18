@@ -55,6 +55,7 @@ directories:
   images: /path/to/images
   instances: /path/to/instances
   clusters: /path/to/clusters
+  outputs: /path/to/outputs
 `
 	err = ioutil.WriteFile(tempFile.Name(), []byte(sampleConfig), 0644)
 	assert.NoError(t, err)
@@ -62,7 +63,7 @@ directories:
 	expectedConfig := &Config{
 		Hypervisor:  "test-hypervisor",
 		Connection:  "test-connection",
-		Directories: Directories{Images: "/path/to/images", Instances: "/path/to/instances"},
+		Directories: Directories{Images: "/path/to/images", Instances: "/path/to/instances", Outputs: "/path/to/outputs"},
 	}
 
 	actualConfig, err := loadConfigFromFile(tempFile.Name())
@@ -89,6 +90,7 @@ func TestCreateDefaultConfig(t *testing.T) {
 		Directories: Directories{
 			Images:    getDefaultImagePath(),
 			Instances: getDefaultInstancesPath(),
+			Outputs:   getDefaultOutputsPath(),
 		},
 	}
 
