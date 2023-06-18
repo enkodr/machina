@@ -12,7 +12,7 @@ func EnsureDirectories(cfg *config.Config) {
 	// Create directories
 	os.MkdirAll(cfg.Directories.Images, 0755)
 	os.MkdirAll(cfg.Directories.Instances, 0755)
-
+	os.MkdirAll(cfg.Directories.Results, 0755)
 }
 
 // GetFileName extracts and returns the name of the file from the URL

@@ -54,6 +54,7 @@ var createCommand = &cobra.Command{
 				os.Exit(1)
 			}
 
+			fmt.Printf("\nCreating machine %q\n", machine.Name)
 			fmt.Printf("Downloading image\n")
 			// Call the DownloadImage method that will download the distro image needed to boot the instance
 			err = machine.DownloadImage()
@@ -62,7 +63,6 @@ var createCommand = &cobra.Command{
 				os.Exit(1)
 			}
 
-			fmt.Printf("Installing instance %q\n", machine.Name)
 			// Call the CreateDisks methiod that will create boot and seed disks necessary for the instance to boot
 			fmt.Printf("Create boot and seed disks for instance '%s'\n", machine.Name)
 			err = machine.CreateDisks()

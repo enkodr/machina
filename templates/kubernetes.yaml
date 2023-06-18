@@ -7,10 +7,13 @@ name: kubernetes
 # Params allows you to set parametes to be used in the scripts.
 # These parameters will be available for all the machines within the workspace.
 params:
-- name: "k8s-version"
-  value: "1.27.2"
-- name: "network"
-  value: "10.0.0.0/16"
+  k8sVersion: "1.27.2"
+  network: "10.0.0.0/16"
+
+# The results allows you to define the results from the cluster.
+# These results will be available for all the machines within the workspace.
+results:
+- joinCommand
 
 # The machines uses a list of kind Machine 
 machines:
@@ -28,25 +31,25 @@ machines:
   scripts:
     install: |
       #!/bin/bash
-  
-      K8S_VERSION="{{ .params.version }}"
-  
+
+      K8S_VERSION="{{ .Params.k8sVersion }}"
+
       # Configure containerd
       cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
       overlay
       br_netfilter
       EOF
-  
+
       sudo modprobe overlay
       sudo modprobe br_netfilter
-  
+
       # Configure kubernetes
       cat << EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
       net.bridge.bridge-nf-call-iptables  = 1
       net.ipv4.ip_forward                 = 1
       net.bridge.bridge-nf-call-ip6tables = 1
       EOF
-  
+
       # Install dependencies
       sudo sysctl --system
       sudo apt-get update && sudo apt-get install -y containerd
@@ -56,26 +59,24 @@ machines:
       sudo swapoff -a
       sudo apt-get install -y apt-transport-https curl
       curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-  
+
       # Install kubernetes
       cat << EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
       deb https://apt.kubernetes.io/ kubernetes-xenial main
       EOF
-      
+
       sudo apt-get update
       sudo apt-get install -y kubelet=${K8S_VERSION}-00 kubeadm=${K8S_VERSION}-00 kubectl=${K8S_VERSION}-00
       sudo apt-mark hold kubelet kubeadm kubectl
- 
-      sudo kubeadm init --pod-network-cidr {{ .params.network }} --kubernetes-version ${K8S_VERSION}
+
+      sudo kubeadm init --pod-network-cidr {{ .Params.network }} --kubernetes-version ${K8S_VERSION}
       kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/calico.yaml
       mkdir -p $HOME/.kube
       sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
       sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-    init:
-      #!/bin/bash
-      echo "To get the command for nodes to join the cluster, run:"
-      echo "  kubeadm token create --print-join-command"
+      kubeadm token create --print-join-command > $(outputs.joinCommand)
+
 
 - kind: Machine
   name: worker-node
@@ -90,7 +91,7 @@ machines:
     install: |
       #!/bin/bash
   
-      K8S_VERSION="{{ .params.version }}"
+      K8S_VERSION="{{ .Params.k8sVersion }}"
   
       # Configure containerd
       cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
@@ -126,4 +127,6 @@ machines:
       sudo apt-get update
       sudo apt-get install -y kubelet=${K8S_VERSION}-00 kubeadm=${K8S_VERSION}-00 kubectl=${K8S_VERSION}-00
       sudo apt-mark hold kubelet kubeadm kubectl
+
+      sudo sh -c $(outputs.joinCommand)
   

@@ -30,6 +30,7 @@ var healthCommand = &cobra.Command{
 				"genisoimage",
 				"qemu-img",
 				"qemu-system-x86_64",
+				"rsync",
 				"scp",
 				"ssh",
 				"virt-install",

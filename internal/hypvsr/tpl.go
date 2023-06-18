@@ -147,6 +147,11 @@ func parseTemplate(tpl []byte) (*Instance, error) {
 			return nil, err
 		}
 
+		err = c.Prepare()
+		if err != nil {
+			return nil, err
+		}
+
 		// Extend the Cluster
 		expandedMachines := []Machine{}
 		for _, machine := range c.Instances {
@@ -169,6 +174,10 @@ func parseTemplate(tpl []byte) (*Instance, error) {
 				copiedMachine.Runner = &osutil.CommandRunner{}
 				// Set the Hypervisor to use
 				copiedMachine.Hypervisor = getHypervisor()
+				// Set the base directory
+				copiedMachine.baseDir = cfg.Directories.Instances
+				// Set the cluster name
+				copiedMachine.clusterName = c.Name
 
 				expandedMachines = append(expandedMachines, copiedMachine)
 			}
@@ -207,6 +216,7 @@ func GetMachine(name string) (*Machine, error) {
 	}
 	machine.Runner = &osutil.CommandRunner{}
 	machine.Hypervisor = getHypervisor()
+	machine.baseDir = cfg.Directories.Instances
 
 	return machine, nil
 }

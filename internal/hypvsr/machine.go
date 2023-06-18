@@ -35,6 +35,7 @@ type Machine struct {
 	Variant     string        `yaml:"variant,omitempty"`     // OS variant to use
 	Hypervisor  Hypervisor    `yaml:"-"`
 	Runner      osutil.Runner `yaml:"-"`
+	clusterName string
 }
 
 // Image holds the URL and checksum of the machine image
@@ -81,13 +82,13 @@ type Network struct {
 // CreateDir creates the directory for the machine
 func (machine *Machine) CreateDir() error {
 	// Check if VM already exists
-	_, err := os.Stat(filepath.Join(cfg.Directories.Instances, machine.Name))
+	_, err := os.Stat(filepath.Join(machine.baseDir, machine.Name))
 	if !os.IsNotExist(err) {
 		return errors.New("machine already exists")
 	}
 
 	// Create the directory
-	return os.Mkdir(filepath.Join(cfg.Directories.Instances, machine.Name), 0755)
+	return os.Mkdir(filepath.Join(machine.baseDir, machine.Name), 0755)
 
 }
 
@@ -101,7 +102,7 @@ func (machine *Machine) Prepare() error {
 	}
 
 	// Save network configuration
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.NetworkFilename)), netYaml, 0644)
+	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.NetworkFilename)), netYaml, 0644)
 	if err != nil {
 		return err
 	}
@@ -141,13 +142,13 @@ func (machine *Machine) Prepare() error {
 	}
 
 	usrYaml = append([]byte("#cloud-config\n"), usrYaml...)
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.UserdataFilename)), usrYaml, 0644)
+	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.UserdataFilename)), usrYaml, 0644)
 	if err != nil {
 		return err
 	}
 
 	// Save private key
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.PrivateKeyFilename)), clCfg.PrivateKey, 0600)
+	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename)), clCfg.PrivateKey, 0600)
 	if err != nil {
 		return err
 	}
@@ -164,7 +165,7 @@ func (machine *Machine) Prepare() error {
 		return err
 	}
 
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.InstanceFilename)), vmYaml, 0644)
+	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.InstanceFilename)), vmYaml, 0644)
 	if err != nil {
 		return err
 	}
@@ -225,7 +226,7 @@ func (machine *Machine) createInstanceDisk() error {
 		"create",
 		"-F", "qcow2",
 		"-b", filepath.Join(cfg.Directories.Images, image),
-		"-f", "qcow2", filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.DiskFilename)),
+		"-f", "qcow2", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.DiskFilename)),
 		machine.Resources.Disk,
 	}
 
@@ -244,9 +245,9 @@ func (machine *Machine) createSeedDisk() error {
 
 	// Set the arguments
 	args := []string{
-		fmt.Sprintf("--network-config=%s", filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.NetworkFilename))),
-		filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.SeedImageFilename)),
-		filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.UserdataFilename)),
+		fmt.Sprintf("--network-config=%s", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.NetworkFilename))),
+		filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.SeedImageFilename)),
+		filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.UserdataFilename)),
 	}
 
 	// Run the command to create the disk
@@ -323,7 +324,7 @@ func (machine *Machine) CopyContent(origin string, dest string) error {
 	args := []string{
 		"-r",
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
 		origin,
 		dest,
 	}
@@ -343,42 +344,103 @@ func (machine *Machine) RunInitScripts() error {
 	command := "scp"
 	args := []string{
 		"-o", "StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
 		"-r",
-		filepath.Join(cfg.Directories.Instances, machine.Name, "bin/"),
+		filepath.Join(machine.baseDir, machine.Name, "bin/"),
 		fmt.Sprintf("%s@%s:/tmp/machina", machine.Credentials.Username, machine.Network.IPAddress),
 	}
 
-	// Run the command to create the disk
+	// Copy the scripts
 	_, err := machine.Runner.RunCommand(command, args)
 	if err != nil {
 		return err
 	}
 
-	// Runs the init script inside the VM
+	// Runs the prepare script inside the VM
 	command = "ssh"
 	args = []string{
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
 		fmt.Sprintf("%s@%s", machine.Credentials.Username, machine.Network.IPAddress),
-		"/tmp/machina/install.sh",
+		"/tmp/machina/prepare.sh",
 	}
 
-	// Run the command to create the disk
+	// Run the prepare script
+	_, err = machine.Runner.RunCommand(command, args)
+	if err != nil {
+		return err
+	}
+
+	// Set permissions
+	command = "chmod"
+	args = []string{
+		"-R",
+		"+x",
+		filepath.Join(cfg.Directories.Results, machine.clusterName),
+	}
+
+	// Run the set permissions command
+	_, err = machine.Runner.RunCommand(command, args)
+	if err != nil {
+		return err
+	}
+
+	// Sync the results from the host to the VM
+	command = "rsync"
+	args = []string{
+		"-ru",
+		"-e",
+		fmt.Sprintf("ssh -i %s", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename))),
+		filepath.Join(cfg.Directories.Results, machine.clusterName),
+		fmt.Sprintf("%s@%s:/etc/machina/results", machine.Credentials.Username, machine.Network.IPAddress),
+	}
+
+	// Copy the results to the machine
+	_, err = machine.Runner.RunCommand(command, args)
+	if err != nil {
+		return err
+	}
+
+	// Runs the install script inside the Machine
+	command = "ssh"
+	args = []string{
+		"-o StrictHostKeyChecking=no",
+		"-i", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
+		fmt.Sprintf("%s@%s", machine.Credentials.Username, machine.Network.IPAddress),
+		"/etc/machina/install.sh",
+	}
+
+	// Run the install script
+	_, err = machine.Runner.RunCommand(command, args)
+	if err != nil {
+		return err
+	}
+
+	// Sync the results from the Machine to the host
+	command = "rsync"
+	args = []string{
+		"-ru",
+		"-e",
+		fmt.Sprintf("ssh -i %s", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename))),
+		fmt.Sprintf("%s@%s:/etc/machina/results/%s", machine.Credentials.Username, machine.Network.IPAddress, machine.clusterName),
+		cfg.Directories.Results,
+	}
+
+	// Copy the results to the host
 	_, err = machine.Runner.RunCommand(command, args)
 	if err != nil {
 		return err
 	}
 
 	// Cleanup
-	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, machine.Name, "bin"))
+	return os.RemoveAll(filepath.Join(machine.baseDir, machine.Name, "bin"))
 }
 
 func (machine *Machine) Shell() error {
 	// Copies the init script into the VM
 	command := "ssh"
 	args := []string{
-		"-i", filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
 		fmt.Sprintf("%s@%s", machine.Credentials.Username, machine.Network.IPAddress),
 	}
 
@@ -413,6 +475,12 @@ func (machine *Machine) createScriptFiles() error {
 		return err
 	}
 
+	// Create the prepare script file
+	err = machine.createPreparelScriptFile()
+	if err != nil {
+		return err
+	}
+
 	// Create the install script file
 	err = machine.createInstallScriptFile()
 	if err != nil {
@@ -429,7 +497,7 @@ func (machine *Machine) createScriptFiles() error {
 
 // Creates the service file
 func (machine *Machine) createServiceFile() error {
-	err := os.MkdirAll(filepath.Join(cfg.Directories.Instances, machine.Name, "bin"), 0755)
+	err := os.MkdirAll(filepath.Join(machine.baseDir, machine.Name, "bin"), 0755)
 	if err != nil {
 		return nil
 	}
@@ -450,7 +518,32 @@ StandardOutput=journal
 WantedBy=multi-user.target
 `
 
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, machine.Name, "bin/machina.service"), []byte(sysDSvc), 0744)
+	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, "bin/machina.service"), []byte(sysDSvc), 0744)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Creates the install script file
+func (machine *Machine) createPreparelScriptFile() error {
+	// Install script
+	prepareScript := `
+sudo mkdir -p /etc/machina/results
+sudo mv /tmp/machina/* /etc/machina
+echo 'source /etc/machina/machinarc' >> $HOME/.bashrc
+sudo chcon -R -t bin_t /etc/machina/machina.service
+sudo cp /etc/machina/machina.service /etc/systemd/system/machina.service
+sudo chmod 664 /etc/systemd/system/machina.service
+sudo systemctl daemon-reload
+sudo systemctl enable machina.service
+sudo systemctl start machina.service
+sudo chown -R %s:%s /etc/machina/*
+`
+	prepareScript = fmt.Sprintf(prepareScript, machine.Credentials.Username, machine.Credentials.Username)
+
+	err := os.WriteFile(filepath.Join(machine.baseDir, machine.Name, "bin/prepare.sh"), []byte(prepareScript), 0744)
 	if err != nil {
 		return err
 	}
@@ -460,20 +553,8 @@ WantedBy=multi-user.target
 
 // Creates the install script file
 func (machine *Machine) createInstallScriptFile() error {
-	// Install script
-	installScript := `
-sudo mkdir -p /etc/machina
-echo 'source /etc/machina/machinarc' >> $HOME/.bashrc
-sudo mv /tmp/machina/* /etc/machina
-sudo chcon -R -t bin_t /etc/machina/machina.service
-sudo cp /etc/machina/machina.service /etc/systemd/system/machina.service
-sudo chmod 664 /etc/systemd/system/machina.service
-sudo systemctl daemon-reload
-sudo systemctl enable machina.service
-sudo systemctl start machina.service
-`
-	machine.Scripts.Install += installScript
-	err := os.WriteFile(filepath.Join(cfg.Directories.Instances, machine.Name, "bin/install.sh"), []byte(machine.Scripts.Install), 0744)
+
+	err := os.WriteFile(filepath.Join(machine.baseDir, machine.Name, "bin/install.sh"), []byte(machine.Scripts.Install), 0744)
 	if err != nil {
 		return err
 	}
@@ -502,12 +583,12 @@ fi
 exit 0
 `, mountName, machine.Mount.GuestPath)
 
-	err := os.WriteFile(filepath.Join(cfg.Directories.Instances, machine.Name, "bin/machina"), []byte(initScript), 0744)
+	err := os.WriteFile(filepath.Join(machine.baseDir, machine.Name, "bin/machina"), []byte(initScript), 0744)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(filepath.Join(cfg.Directories.Instances, machine.Name, "bin/machinarc"), []byte(machine.Scripts.Init), 0644)
+	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, "bin/machinarc"), []byte(machine.Scripts.Init), 0644)
 	if err != nil {
 		return err
 	}

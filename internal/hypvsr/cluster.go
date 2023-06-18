@@ -1,153 +1,94 @@
 package hypvsr
 
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"text/template"
+
+	"github.com/enkodr/machina/internal/config"
+)
+
 // Cluster holds the configuration details for a cluster of machines
 type Cluster struct {
-	Kind      string    `yaml:"kind"`     // Kind of the resource, should be 'Cluster'
-	Name      string    `yaml:"name"`     // Name of the cluster. Must be unique in the system
-	Instances []Machine `yaml:"machines"` // List of machines in the cluster
+	Kind      string            `yaml:"kind"`     // Kind of the resource, should be 'Cluster'
+	Name      string            `yaml:"name"`     // Name of the cluster. Must be unique in the system
+	Params    map[string]string `yaml:"params"`   // Parameters for the cluster
+	Instances []Machine         `yaml:"machines"` // List of machines in the cluster
+	Results   []string          `yaml:"results"`
 }
 
-// CreateDir method creates the directory where the instance files will be stored
-func (c *Cluster) CreateDir() error {
-	// Create the directory for each of the cluster instances
-	for _, vm := range c.Instances {
-		err := vm.CreateDir()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Prepare method calls the Prepare method for each instance
 func (c *Cluster) Prepare() error {
-	// Run the prepare for each of the machines
-	for _, vm := range c.Instances {
-		err := vm.Prepare()
-		if err != nil {
-			return err
-		}
+	err := c.parseParams()
+	if err != nil {
+		return err
+	}
+
+	err = c.createOutputDir()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Cluster) createOutputDir() error {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(filepath.Join(cfg.Directories.Results, c.Name), 0755)
+	if err != nil {
+		return err
 	}
 	return nil
 }
 
-// DownloadImage method calls the DownloadImage method for each instance
-func (c *Cluster) DownloadImage() error {
-	for _, vm := range c.Instances {
-		err := vm.DownloadImage()
+func (c *Cluster) parseParams() error {
+	for i, vm := range c.Instances {
+		// Create a new template and parse the template string
+		tmpl, err := template.New("").Parse(vm.Scripts.Install)
 		if err != nil {
 			return err
 		}
-	}
-	return nil
-}
 
-// CreateDisks method calls the CreateDisks method for each instance
-func (c *Cluster) CreateDisks() error {
-	for _, vm := range c.Instances {
-		err := vm.CreateDisks()
+		// Create a buffer to store the parsed template
+		var buf bytes.Buffer
+		err = executeTemplateWithFallback(tmpl, &buf, c)
 		if err != nil {
 			return err
 		}
+
+		// Set the parsed template to the instance
+		c.Instances[i].Scripts.Install = buf.String()
 	}
+
+	c.parseResults()
+
 	return nil
 }
 
-// Create method calls the Create method for each instance
-func (c *Cluster) Create() error {
-	for _, vm := range c.Instances {
-		err := vm.Create()
-		if err != nil {
-			return err
+func executeTemplateWithFallback(tmpl *template.Template, buf *bytes.Buffer, data interface{}) error {
+	defer func() {
+		if r := recover(); r != nil {
+			// Handle the panic and return an error
+			buf.Reset()
+			err := fmt.Errorf("template execution panicked: %v", r)
+			fmt.Println(err)
+		}
+	}()
+
+	err := tmpl.Execute(buf, data)
+	return err
+}
+
+// Parses the results
+func (cluster *Cluster) parseResults() {
+	for i, machine := range cluster.Instances {
+		for _, output := range cluster.Results {
+			cluster.Instances[i].Scripts.Install = strings.ReplaceAll(machine.Scripts.Install, fmt.Sprintf("$(results.%s)", output), fmt.Sprintf("/etc/machina/results/%s/%s", cluster.Name, output))
 		}
 	}
-	return nil
-}
-
-// Wait method calls the Wait method for each instance
-func (c *Cluster) Wait() error {
-	for _, vm := range c.Instances {
-		err := vm.Wait()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Start method calls the Start method for each instance
-func (c *Cluster) Start() error {
-	for _, vm := range c.Instances {
-		err := vm.Start()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Stop method calls the Stop method for each instance
-func (c *Cluster) Stop() error {
-	for _, vm := range c.Instances {
-		err := vm.Stop()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ForceStop method calls the ForceStop method for each instance
-func (c *Cluster) ForceStop() error {
-	for _, vm := range c.Instances {
-		err := vm.ForceStop()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Status method calls the Status method for each instance
-func (c *Cluster) Status() (string, error) {
-
-	return "", nil
-}
-
-// Delete method calls the Delete method for each instance
-func (c *Cluster) Delete() error {
-	for _, vm := range c.Instances {
-		err := vm.Delete()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// CopyContent method calls the CopyContent method for each instance
-func (c *Cluster) CopyContent(origin string, dest string) error {
-
-	return nil
-}
-
-// RunInitScripts method calls the RunInitScripts method for each instance
-func (c *Cluster) RunInitScripts() error {
-	for _, vm := range c.Instances {
-		err := vm.RunInitScripts()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Shell method calls the Shell method for each instance
-func (c *Cluster) Shell() error {
-	return nil
-}
-
-// GetVMs method calls the GetVMs method for each instance
-func (c *Cluster) GetVMs() []Machine {
-	return c.Instances
 }

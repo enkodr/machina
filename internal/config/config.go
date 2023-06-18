@@ -50,6 +50,7 @@ type Config struct {
 type Directories struct {
 	Images    string `yaml:"images,omitempty"`
 	Instances string `yaml:"instances,omitempty"`
+	Results   string `yaml:"results,omitempty"`
 }
 
 var (
@@ -108,6 +109,7 @@ func createDefaultConfig(cfgFile string) (*Config, error) {
 		Directories: Directories{
 			Images:    getDefaultImagePath(),
 			Instances: getDefaultInstancesPath(),
+			Results:   getDefaultResultsPath(),
 		},
 	}
 
@@ -136,6 +138,12 @@ func getDefaultImagePath() string {
 func getDefaultInstancesPath() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, baseDir, "instances")
+}
+
+// getDefaultResultsPath returns the default path for results
+func getDefaultResultsPath() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, baseDir, "results")
 }
 
 // GetHypervisor returns the hypervisor to be used
