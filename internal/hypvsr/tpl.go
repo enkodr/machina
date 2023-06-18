@@ -172,8 +172,9 @@ func parseTemplate(tpl []byte) (*Instance, error) {
 
 				expandedMachines = append(expandedMachines, copiedMachine)
 			}
-			instance.Machines = append(instance.Machines, machine)
+
 		}
+		instance.Machines = append(instance.Machines, expandedMachines...)
 		break
 	default:
 		return nil, errors.New("unsupported kind")
