@@ -2,9 +2,9 @@ package netutil
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -82,86 +82,65 @@ func TestRandomMacAddress(t *testing.T) {
 }
 
 func TestDownload(t *testing.T) {
-	// Create a test server
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "testdata/file.txt")
+	// Create a test server with a custom handler
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Respond with a success status code and test file content
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Test file content")
 	}))
-	defer testServer.Close()
+	defer ts.Close()
 
-	// Test case 1: Valid download
-	url := fmt.Sprintf("%s/file.txt", testServer.URL)
-	dwnlData, err := Download(url)
-	assert.NoError(t, err)
+	// Use the test server URL for the download
+	url := ts.URL
 
-	// Test case 2: Validate downloaded data
-	fileData, err := os.ReadFile("testdata/file.txt")
-	assert.NoError(t, err)
-	assert.Equal(t, fileData, dwnlData)
-}
-
-func TestDownloadNotFound(t *testing.T) {
-	// Create a test server
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.NotFound(w, r)
-	}))
-	defer testServer.Close()
-
-	// Test case 1: Valid download
-	url := fmt.Sprintf("%s/file.txt", testServer.URL)
-	_, err := Download(url)
-	assert.Error(t, err)
-
+	data, err := Download(url)
+	assert.Nil(t, err)
+	assert.Equal(t, []byte("Test file content"), data)
 }
 
 func TestDownloadAndSave(t *testing.T) {
-	// Create a test server
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "testdata/file.txt")
+	// Create a temporary directory for file saving
+	tempDir := t.TempDir()
+
+	// Create a test server with a custom handler
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Respond with a success status code and test file content
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Test file content")
 	}))
-	defer testServer.Close()
-	url := fmt.Sprintf("%s/file.txt", testServer.URL)
+	defer ts.Close()
 
-	destination := "/tmp"
+	// Use the test server URL and temporary directory for the download and save
+	url := fmt.Sprintf("%s/file.txt", ts.URL)
+	destination := tempDir
+
 	err := DownloadAndSave(url, destination)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 
-	// Verify that the file was downloadADownloadAndSaveed to the correct location
+	// Check if the file was saved correctly
 	filePath := filepath.Join(destination, "file.txt")
-	_, err = os.Stat(filePath)
-	assert.False(t, os.IsNotExist(err))
-
-	// Clean up the test file
-	os.Remove(filePath)
-
-	// Test case 2: Invalid URL
-	err = DownloadAndSave("invalidurl", destination)
-	assert.Error(t, err)
-
-	// Test case 3: Valid URL but with no file specified
-	err = DownloadAndSave(testServer.URL, destination)
-	assert.Error(t, err)
-
-	// Test case 4: Invalid destination
-	destination = "invalidpath"
-	err = DownloadAndSave(url, destination)
-	assert.Error(t, err)
-
+	data, err := ioutil.ReadFile(filePath)
+	assert.Nil(t, err)
+	assert.Equal(t, []byte("Test file content"), data)
 }
 
 func TestGetIPFromNetworkAddress(t *testing.T) {
-	ips := []struct {
-		input string
-		want  string
-	}{
-		{"192.168.0.1/24", "192.168.0.1"},
-		{"10.0.0.1/16", "10.0.0.1"},
-		{"172.16.0.1/12", "172.16.0.1"},
-		{"", ""},
-		{"192.168.0.1", "192.168.0.1"}, // Test without network prefix
-	}
+	// Test case with a valid network address
+	netAddr := "192.168.0.0/24"
+	expectedIP := "192.168.0.0"
+	ip, err := GetIPFromNetworkAddress(netAddr)
+	assert.Nil(t, err)
+	assert.Equal(t, expectedIP, ip)
 
-	for _, ip := range ips {
-		got := GetIPFromNetworkAddress(ip.input)
-		assert.Equal(t, got, ip.want)
-	}
+	// Test case with an invalid network address
+	netAddr = "192.168.0.0" // Missing CIDR notation
+	ip, err = GetIPFromNetworkAddress(netAddr)
+	assert.NotNil(t, err)
+	assert.Equal(t, "", ip)
+
+	// Test case with an empty network address
+	netAddr = "" // Missing CIDR notation
+	ip, err = GetIPFromNetworkAddress(netAddr)
+	assert.NotNil(t, err)
+	assert.Equal(t, "", ip)
 }

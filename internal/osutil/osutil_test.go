@@ -1,61 +1,190 @@
 package osutil
 
 import (
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/hex"
+	"io"
+	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMkDir(t *testing.T) {
-	// Define test data
-	testDir := "testdir"
+func TestCommandRunner_RunCommand(t *testing.T) {
+	runner := CommandRunner{}
+	command := "echo"
+	args := []string{"Hello", "World"}
 
-	// Clean up test directory in case it already exists
-	os.RemoveAll(testDir)
+	output, err := runner.RunCommand(command, args)
 
-	// Create test directory
-	MkDir(testDir)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
 
-	// Check if test directory exists
-	_, err := os.Stat(testDir)
-	assert.NoError(t, err)
+	expectedOutput := "Hello World\n"
+	if output != expectedOutput {
+		t.Errorf("Expected output %q, got %q", expectedOutput, output)
+	}
+}
 
-	// Clean up test directory
-	err = os.RemoveAll(testDir)
-	assert.NoError(t, err)
+func TestCommandRunner_RunNonExisingCommand(t *testing.T) {
+	runner := CommandRunner{}
+	command := "nonexistent"
+	args := []string{}
+
+	_, err := runner.RunCommand(command, args)
+
+	if err == nil {
+		t.Error("Expected an error, got nil")
+	}
+}
+
+func TestCommandRunner_RunCommandNonExistingFile(t *testing.T) {
+	// Define the command to run
+	runner := CommandRunner{}
+	command := "ls"
+	args := []string{"nonexistent-file"}
+
+	// Run the command
+	_, err := runner.RunCommand(command, args)
+
+	// Assert that an error is returned
+	assert.Error(t, err, "Expected an error, got nil")
 }
 
 func TestChecksum(t *testing.T) {
-	// Test case 1: sha256 checksum
-	path := "testdata/file.txt"
-	checksum := "sha256:5bee30d1de847f564feaeb1f8ad30c2e9ace4766b3fa8a9fa11be2b2f0cea2f4"
-	want := true
-	got := Checksum(path, checksum)
-	assert.Equal(t, want, got)
+	// Create a temporary file for testing
+	fileContent := []byte("Test file content")
+	tmpFile, err := ioutil.TempFile("", "testfile")
+	assert.Nil(t, err)
+	tmpFilePath := tmpFile.Name()
+	defer os.Remove(tmpFilePath)
+	defer tmpFile.Close()
+	_, err = tmpFile.Write(fileContent)
+	assert.Nil(t, err)
 
-	// Test case 2: sha512 checksum
-	checksum = "sha512:9c5f698667819d664c5fce6e6bed8cc0c96c488b148377a9a88e7dd670a401ddfd9e746e2c7e9935617815cf103143dada72b8b25a075d2747c105528cd9acf3"
-	want = true
-	got = Checksum(path, checksum)
-	assert.Equal(t, want, got)
+	// Test case with a matching SHA256 checksum
+	checksum := "sha256:" + sha256Checksum(fileContent)
+	result := Checksum(tmpFilePath, checksum)
+	assert.True(t, result)
 
-	// Test case 3: invalid checksum
-	checksum = "md5:invalidchecksum"
-	want = false
-	got = Checksum(path, checksum)
-	assert.Equal(t, want, got)
+	// Test case with a non-matching SHA256 checksum
+	checksum = "sha256:InvalidChecksum"
+	result = Checksum(tmpFilePath, checksum)
+	assert.False(t, result)
 
-	// Test case 4: invalid file path
-	path = "invalidpath"
-	checksum = "sha256:5bee30d1de847f564feaeb1f8ad30c2e9ace4766b3fa8a9fa11be2b2f0cea2f4"
-	want = false
-	got = Checksum(path, checksum)
-	assert.Equal(t, want, got)
+	// Test case with an unsupported algorithm (MD5)
+	checksum = "md5:InvalidChecksum"
+	result = Checksum(tmpFilePath, checksum)
+	assert.False(t, result)
 
-	// Test case 5: test empty sha
-	path = "testdata/file.txt"
-	want = false
-	got = Checksum(path, "")
-	assert.Equal(t, want, got)
+	// Test case with an invalid checksum format
+	checksum = "InvalidChecksum"
+	result = Checksum(tmpFilePath, checksum)
+	assert.False(t, result)
+
+	// Test case with a non-existing file
+	nonExistingFilePath := "/path/to/nonexistingfile"
+	checksum = "sha256:" + sha256Checksum(fileContent)
+	result = Checksum(nonExistingFilePath, checksum)
+	assert.False(t, result)
+
+	// Test case with a matching SHA512 checksum
+	checksum = "sha512:" + sha512Checksum(fileContent)
+	result = Checksum(tmpFilePath, checksum)
+	assert.True(t, result)
+
+	// Test case with a non-matching SHA512 checksum
+	checksum = "sha512:InvalidChecksum"
+	result = Checksum(tmpFilePath, checksum)
+	assert.False(t, result)
+}
+
+// Helper function to calculate SHA256 checksum
+func sha256Checksum(data []byte) string {
+	// Calculate the SHA256 hash of the image data
+	hasher := sha256.New()
+	hasher.Write(data)
+
+	// Return the SHA256 checksum
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// Helper function to calculate SHA512 checksum
+func sha512Checksum(data []byte) string {
+	// Calculate the SHA512 hash of the image data
+	hasher := sha512.New()
+	hasher.Write(data)
+
+	// Return the SHA512 checksum
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// MockRunner is a mock implementation of the Runner interface.
+type MockRunner struct {
+	Command string
+	Args    []string
+	Options []Option
+	Output  string
+	Error   error
+	Called  bool
+}
+
+// RunCommand is the implementation of the Runner interface for the mock.
+func (m *MockRunner) RunCommand(command string, args []string, options ...Option) (string, error) {
+	m.Called = true
+	m.Command = command
+	m.Args = args
+	m.Options = options
+	return m.Output, m.Error
+}
+
+func TestChecksumWithValidChecksum(t *testing.T) {
+	// Create a temporary file for testing
+	tmpFile := createTempFile(t, "Hello, World!")
+
+	// Calculate the SHA256 checksum of the file
+	hash := sha256.New()
+	hash.Write([]byte("Hello, World!"))
+	checksum := "sha256:" + hex.EncodeToString(hash.Sum(nil))
+
+	// Verify the checksum
+	result := Checksum(tmpFile, checksum)
+
+	// Assert that the result is true
+	assert.True(t, result, "Expected checksum verification to pass")
+}
+
+func TestChecksumWithInvalidChecksum(t *testing.T) {
+	// Create a temporary file for testing
+	tmpFile := createTempFile(t, "Hello, World!")
+
+	// Specify an incorrect checksum
+	incorrectChecksum := "sha256:123456789"
+
+	// Verify the checksum
+	result := Checksum(tmpFile, incorrectChecksum)
+
+	// Assert that the result is false
+	assert.False(t, result, "Expected checksum verification to fail")
+}
+
+func createTempFile(t *testing.T, content string) string {
+	// Create a temporary file for testing
+	tmpFile, err := ioutil.TempFile("", "tempfile")
+	if err != nil {
+		t.Fatal("Failed to create temporary file:", err)
+	}
+
+	// defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+
+	// Write the content to the temporary file
+	_, err = io.WriteString(tmpFile, content)
+	assert.Nil(t, err)
+
+	// Return the path to the temporary file
+	return tmpFile.Name()
 }

@@ -1,3 +1,6 @@
+# The kind Machine is the type to create isolated virtual machines
+kind: Machine
+
 # The name to use for the machine.
 # This needs to be a unique name in the system.
 name: rockylinux
@@ -43,3 +46,12 @@ scripts:
   init: |
     #!/bin/bash
     echo "Welcome to RockyLinux"
+
+# Mounts defines a set of mount points from the host into the VM, where the
+# `hostPath` is the path in the host and the `guestPath` sets the path inside the VM 
+# where the mount will be defined. 
+# This will use `virtio-9p` driver.
+mount:
+  # name: share
+  # hostPath: "/path/to/host/folder"
+  # guestPath: "/path/to/guest/folder"

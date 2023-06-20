@@ -1,3 +1,6 @@
+# The kind Machine is the type to create isolated virtual machines
+kind: Machine
+
 # The name to use for the machine.
 # This needs to be a unique name in the system.
 name: amazonlinux
@@ -6,7 +9,6 @@ name: amazonlinux
 # To grab a list of the ones available for your system you can just run 
 # `virt-install --os-variant list`
 variant: "centos8"
-
 
 # The image to be used to provision the machine
 image : 
@@ -43,3 +45,12 @@ scripts:
   init: |
     #!/bin/bash
     echo "Welcome to AmazonLinux"
+
+# Mounts defines a set of mount points from the host into the VM, where the
+# `hostPath` is the path in the host and the `guestPath` sets the path inside the VM 
+# where the mount will be defined. 
+# This will use `virtio-9p` driver.
+mount:
+  # name: share
+  # hostPath: "/path/to/host/folder"
+  # guestPath: "/path/to/guest/folder"
