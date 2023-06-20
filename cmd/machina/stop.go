@@ -20,25 +20,28 @@ var stopCommand = &cobra.Command{
 	},
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Load the instance data
-		instance, err := hypvsr.GetMachine(name)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Instance %q doesn't exist\n", name)
-			os.Exit(1)
-		}
+		for _, arg := range args {
+			name = arg
+			// Load the instance data
+			instance, err := hypvsr.GetMachine(name)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Instance %q doesn't exist\n", name)
+				os.Exit(1)
+			}
 
-		// Stop the instance
-		fmt.Printf("Stoping instance '%s'\n", name)
-		if force {
-			err = instance.ForceStop()
-		} else {
-			err = instance.Stop()
-		}
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error stoping the instance information\n")
-			os.Exit(1)
-		}
+			// Stop the instance
+			fmt.Printf("Stoping instance '%s'\n", name)
+			if force {
+				err = instance.ForceStop()
+			} else {
+				err = instance.Stop()
+			}
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error stoping the instance information\n")
+				os.Exit(1)
+			}
 
+		}
 		fmt.Printf("Done!\n")
 	},
 }

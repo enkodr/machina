@@ -16,28 +16,31 @@ var startCommand = &cobra.Command{
 	},
 	ValidArgsFunction: bashCompleteInstanceNames,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Load the instance data
-		instance, err := hypvsr.GetMachine(name)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "the instance %q doesn't exist\n", name)
-			os.Exit(1)
-		}
+		for _, arg := range args {
+			name = arg
+			// Load the instance data
+			instance, err := hypvsr.GetMachine(name)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "the instance %q doesn't exist\n", name)
+				os.Exit(1)
+			}
 
-		// Start the instance
-		fmt.Printf("Starting instance '%s'\n", name)
-		err = instance.Start()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to create the instance\n")
-			os.Exit(1)
-		}
+			// Start the instance
+			fmt.Printf("Starting instance '%s'\n", name)
+			err = instance.Start()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to create the instance\n")
+				os.Exit(1)
+			}
 
-		// Wait until instance is ready
-		fmt.Printf("Waiting for instance '%s'\n", name)
-		err = instance.Wait()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Instance seems to be stuck in start process\n")
-		}
+			// Wait until instance is ready
+			fmt.Printf("Waiting for instance '%s'\n", name)
+			err = instance.Wait()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Instance seems to be stuck in start process\n")
+			}
 
+		}
 		fmt.Printf("Done!\n")
 	},
 }

@@ -70,12 +70,12 @@ machines:
       sudo apt-mark hold kubelet kubeadm kubectl
 
       sudo kubeadm init --pod-network-cidr {{ .Params.network }} --kubernetes-version ${K8S_VERSION}
-      kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/calico.yaml
       mkdir -p $HOME/.kube
       sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
       sudo chown $(id -u):$(id -g) $HOME/.kube/config
+      kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/calico.yaml
 
-      kubeadm token create --print-join-command > $(outputs.joinCommand)
+      kubeadm token create --print-join-command > $(results.joinCommand)
 
 
 - kind: Machine
@@ -128,5 +128,5 @@ machines:
       sudo apt-get install -y kubelet=${K8S_VERSION}-00 kubeadm=${K8S_VERSION}-00 kubectl=${K8S_VERSION}-00
       sudo apt-mark hold kubelet kubeadm kubectl
 
-      sudo sh -c $(outputs.joinCommand)
+      sudo sh -c $(results.joinCommand)
   
