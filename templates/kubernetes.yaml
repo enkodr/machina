@@ -84,8 +84,8 @@ machines:
   replicas: 2
 
   image : 
-    url: "https://cloud-images.ubuntu.com/focal/20230530/focal-server-cloudimg-amd64.img"
-    checksum: "sha256:5605c285414bab81aa600b3ad7d0ee89f9882e148864cb0c59dd7fc6b8c8b9d0"
+    url: "https://cloud-images.ubuntu.com/focal/20230619/focal-server-cloudimg-amd64.img"
+    checksum: "sha256:b2b8e1048080f6112bd0c5fcb62846ad4dbef53527a2846fececa02111ac8378"
 
   scripts:
     install: |
