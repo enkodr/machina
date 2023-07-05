@@ -67,14 +67,24 @@ func LoadConfig() (*Config, error) {
 		return loadConfigFromFile(cfgFile)
 	}
 
+	// Create config directory
+	createConfigDir()
+
 	// Otherwise, create a default config file
 	return createDefaultConfig(cfgFile)
 }
 
-// GetConfigFilePath returns the path to the config file
+// getConfigFilePath returns the path to the config file
 func getConfigFilePath() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, cfgDir, "config.yaml")
+}
+
+// Create config directory
+func createConfigDir() error {
+	home, _ := os.UserHomeDir()
+	dir := filepath.Join(home, cfgDir)
+	return os.MkdirAll(dir, 0755)
 }
 
 // configExists checks if the config file exists
