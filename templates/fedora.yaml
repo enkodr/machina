@@ -12,8 +12,8 @@ variant: "fedora37"
 
 # The image to be used to provision the machine
 image : 
-  url: "https://download.fedoraproject.org/pub/fedora/linux/releases/38/Cloud/x86_64/images/Fedora-Cloud-Base-38-1.6.x86_64.qcow2"                                                                                                                        
-  checksum: "sha256:d334670401ff3d5b4129fcc662cf64f5a6e568228af59076cc449a4945318482"   
+  url: "https://download.fedoraproject.org/pub/fedora/linux/releases/38/Cloud/x86_64/images/Fedora-Cloud-Base-38-1.6.x86_64.qcow2"
+  checksum: "sha256:d334670401ff3d5b4129fcc662cf64f5a6e568228af59076cc449a4945318482"
 
 # The user credentials to be set for the default user.
 # This user will have root access without asking for password.

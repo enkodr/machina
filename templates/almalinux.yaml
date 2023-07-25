@@ -12,8 +12,8 @@ variant: "almalinux9"
 
 # The image to be used to provision the machine
 image : 
-  url: "https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-9.2-20230513.x86_64.qcow2"                                                                                                                        
-  checksum: "sha256:207d885ca8140e3106098e946cfc04088b0e21f50d24815051520d452eae0a50"   
+  url: "https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2"
+  checksum: "sha256:207d885ca8140e3106098e946cfc04088b0e21f50d24815051520d452eae0a50"
   
 # The user credentials to be set for the default user.
 # This user will have root access without asking for password.
