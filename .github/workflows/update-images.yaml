@@ -1,0 +1,45 @@
+name: update-images
+
+on:
+  schedule:
+  - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    permissions:
+      contents: write  # for Git to git push
+    run-on: ubuntu-latest
+    steps:
+    - name: Update images
+      run: ./bin/updateISO
+
+    - name: Check if any files have changed
+      id: changed-files
+      run: |
+        if [ -n "$(git status --porcelain)" ]; then
+          # Set the GitHub Actions output
+          echo "any_changed=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Commit and push the changes
+      if: ${{steps.changed-files.outputs.any_changed == 'true'}}
+      run: |
+        git config user.name "machina bot"
+        git config user.email "machina@enkodr.net"
+        git add .
+        git commit -m "Update templates"
+        git push -u origin update-templates
+
+    - name: Create a pull request
+      if: ${{steps.changed-files.outputs.any_changed == 'true'}}
+      env:
+        GITHUB_TOKEN: ${{secrets.MACHINA_BOT_SECRET}}
+      run: |
+        gh pr create \
+          --title "Update template images" \
+          --body "This PR updates the distro version for the templates images."
+        gh pr merge --auto --squash
