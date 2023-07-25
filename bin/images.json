@@ -1,0 +1,50 @@
+[
+	{
+		"distro": "almalinux",
+		"alg": "sha256",
+		"baseURL": "https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/", 	
+		"checksumFile": "CHECKSUM",
+		"searchString": "AlmaLinux-9-GenericCloud-latest.x86_64.qcow2",
+		"hashPosition": 1
+	},
+	{
+		"distro": "centos-stream",
+		"alg": "sha256sum",
+		"baseURL": "https://cloud.centos.org/centos/9-stream/x86_64/images/", 	
+		"checksumFile": "CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2.SHA256SUM",
+		"searchString": "(CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2)",
+		"hashPosition": 4
+	},
+	{
+		"distro": "kubernetes",
+		"alg": "sha256",
+		"baseURL": "https://cloud-images.ubuntu.com/focal/current/", 	
+		"checksumFile": "SHA256SUMS",
+		"searchString": "focal-server-cloudimg-amd64.img",
+		"hashPosition": 1
+	},
+	{
+		"distro": "debian",
+		"alg": "sha512",
+		"baseURL": "https://cloud.debian.org/images/cloud/bullseye/latest/", 	
+		"checksumFile": "SHA512SUMS",
+		"searchString": "debian-11-genericcloud-amd64.qcow2",
+		"hashPosition": 1
+	},
+	{
+		"distro": "rockylinux",
+		"alg": "sha256",
+		"baseURL": "http://dl.rockylinux.org/pub/rocky/9/images/x86_64/", 	
+		"checksumFile": "CHECKSUM",
+		"searchString": "(Rocky-9-GenericCloud-Base.latest.x86_64.qcow2)",
+		"hashPosition": 1
+	},
+	{
+		"distro": "ubuntu",
+		"alg": "sha256",
+		"baseURL": "https://cloud-images.ubuntu.com/jammy/current/", 	
+		"checksumFile": "SHA256SUMS",
+		"searchString": "jammy-server-cloudimg-amd64.img",
+		"hashPosition": 1
+	}
+]

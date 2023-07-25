@@ -1,0 +1,5 @@
+kind: Cluster
+
+name: k8s
+
+extends: kubernetes

@@ -24,9 +24,9 @@ machines:
   # Number of machines to create
   replicas: 1
 
-  image : 
-    url: "https://cloud-images.ubuntu.com/focal/20230619/focal-server-cloudimg-amd64.img"
-    checksum: "sha256:b2b8e1048080f6112bd0c5fcb62846ad4dbef53527a2846fececa02111ac8378"
+  image: 
+    url: "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img"
+    checksum: "sha256:52b6a37e7fd328d2a6050de2d9c287743e0232a63c236e4d5c6e4d420e7ea093"
 
   scripts:
     install: |
@@ -83,9 +83,9 @@ machines:
   extends: ubuntu
   replicas: 2
 
-  image : 
-    url: "https://cloud-images.ubuntu.com/focal/20230619/focal-server-cloudimg-amd64.img"
-    checksum: "sha256:b2b8e1048080f6112bd0c5fcb62846ad4dbef53527a2846fececa02111ac8378"
+  image: 
+    url: "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img"
+    checksum: "sha256:52b6a37e7fd328d2a6050de2d9c287743e0232a63c236e4d5c6e4d420e7ea093"
 
   scripts:
     install: |

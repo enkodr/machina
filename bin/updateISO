@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+dir=$(dirname $0)
+
+jq -c '.[]' "${dir}/images.json" | while read item; do
+  # Get remote content
+  distro=$(echo "$item" | jq .distro | tr -d '"')
+  alg=$(echo "$item" | jq .alg | tr -d '"')
+  baseURL=$(echo "$item" | jq .baseURL | tr -d '"')
+  checksumFile=$(echo "$item" | jq .checksumFile | tr -d '"')
+  searchString=$(echo "$item" | jq .searchString | tr -d '"')
+  hashPosition=$(echo "$item" | jq .hashPosition)
+
+  echo "Checking for ${distro}..."
+  # Getting remote checksum
+  checksum=$(wget ${baseURL}/${checksumFile} -q -O - | grep ${searchString} | awk "{print \$${hashPosition}}")
+
+  template="${dir}/../templates/${distro}.yaml"
+  localChecksum=$(cat "${template}" | grep -m1 checksum | awk '{print $2}' | tr -d '"')
+  remoteChecksum="${alg}:${checksum}"
+  echo "Remote Checksum: ${remoteChecksum}"
+  echo "Local Checksum: ${localChecksum}"
+  # Check if image was updated
+  if [ "${localChecksum}" != "${remoteChecksum}" ]; then
+    echo "Updating local checksum for ${distro}..."
+    sed -i -e "s/${localChecksum}/${remoteChecksum}/g" "${template}"
+  fi
+done
+
