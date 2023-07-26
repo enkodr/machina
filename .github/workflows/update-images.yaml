@@ -12,7 +12,7 @@ jobs:
   update:
     permissions:
       contents: write  # for Git to git push
-    run-on: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
     - name: Update images
       run: ./bin/updateISO
