@@ -14,6 +14,9 @@ jobs:
       contents: write  # for Git to git push
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v3.4.0
+      
     - name: Update images
       run: ./bin/updateISO
 
