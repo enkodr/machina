@@ -5,9 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	"net"
-	"os"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -22,74 +20,6 @@ var (
 type SSHClient struct {
 	conn   *ssh.Client
 	config *ssh.ClientConfig
-}
-
-// NewClient creates a new SSHClient
-func NewClient(host string, user string, privKeyFile string) (*SSHClient, error) {
-	// Create the ssh config
-	cfg := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{
-			publicKeyFile(privKeyFile),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-
-	// Start the ssh connection
-	conn, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", host, port), cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	// Return the ssh client
-	return &SSHClient{
-		conn:   conn,
-		config: cfg,
-	}, nil
-}
-
-// RunAsSudo runs a command as sudo on the remote host
-func (c *SSHClient) RunAsSudo(command string) error {
-	// Create a new session
-	session, err := c.conn.NewSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	// Run the command
-	return session.Run(fmt.Sprintf("sudo %s", command))
-}
-
-// RunAsUser runs a command as the user on the remote host
-func (c *SSHClient) RunAsUser(command string) error {
-	// Create a new session
-	session, err := c.conn.NewSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	// Run the command
-	return session.Run(fmt.Sprintf(command))
-}
-
-// publicKeyFile reads the private key file and returns the ssh.AuthMethod
-func publicKeyFile(file string) ssh.AuthMethod {
-	// Read the private key file
-	buffer, err := os.ReadFile(file)
-	if err != nil {
-		return nil
-	}
-
-	// Parse the private key
-	key, err := ssh.ParsePrivateKey(buffer)
-	if err != nil {
-		return nil
-	}
-
-	// Return the ssh.AuthMethod
-	return ssh.PublicKeys(key)
 }
 
 // GenerateNewSSHKeys generates a new SSH key pair
