@@ -32,7 +32,6 @@ func NewClient(host string, user string, privKeyFile string) (*SSHClient, error)
 		Auth: []ssh.AuthMethod{
 			publicKeyFile(privKeyFile),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
 	// Start the ssh connection
