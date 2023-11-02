@@ -7,7 +7,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -44,12 +43,12 @@ func TestNewClient(t *testing.T) {
 
 	// Create a temporary private key file for testing
 	privKeyData := generatePrivateKeyPEM(t)
-	err := ioutil.WriteFile(privKeyFile, privKeyData, 0600)
+	err := os.WriteFile(privKeyFile, privKeyData, 0600)
 	assert.Nil(t, err)
 	defer os.Remove(privKeyFile)
 
 	// Test creating a new SSHClient
-	client, err := NewClient(serverAddr, "", privKeyFile)
+	client, err := NewClient(serverAddr, "user", privKeyFile)
 	assert.NotNil(t, client)
 	assert.Nil(t, err)
 }
@@ -65,7 +64,7 @@ func TestRunAsSudo(t *testing.T) {
 
 	// Create a temporary private key file for testing
 	privKeyData := generatePrivateKeyPEM(t)
-	err := ioutil.WriteFile(privKeyFile, privKeyData, 0600)
+	err := os.WriteFile(privKeyFile, privKeyData, 0600)
 	assert.Nil(t, err)
 	defer os.Remove(privKeyFile)
 
@@ -90,7 +89,7 @@ func TestRunAsUser(t *testing.T) {
 
 	// Create a temporary private key file for testing
 	privKeyData := generatePrivateKeyPEM(t)
-	err := ioutil.WriteFile(privKeyFile, privKeyData, 0600)
+	err := os.WriteFile(privKeyFile, privKeyData, 0600)
 	assert.Nil(t, err)
 	defer os.Remove(privKeyFile)
 
