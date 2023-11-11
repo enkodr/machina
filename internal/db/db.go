@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 
 	"github.com/enkodr/machina/internal/path"
-	"go.etcd.io/bbolt"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -42,7 +41,7 @@ func NewDB(bucket string) (*DB, error) {
 
 func (db *DB) Put(key string, value []byte) error {
 	// Store the data
-	err := db.db.Update(func(tx *bbolt.Tx) error {
+	err := db.db.Update(func(tx *bolt.Tx) error {
 		// Create a bucket.
 		bkt := tx.Bucket([]byte(db.bucket))
 
