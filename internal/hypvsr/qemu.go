@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 
 	"github.com/enkodr/machina/internal/config"
 	"github.com/enkodr/machina/internal/path"
@@ -111,16 +110,16 @@ func (h *Qemu) Delete(vm *Machine) error {
 	return os.RemoveAll(filepath.Join(cfg.Directories.Instances, vm.Name))
 }
 
-// Get Hypervisor driver
-func getHypervisorDriver() string {
-	driver := "kvm"
+// // Get Hypervisor driver
+// func getHypervisorDriver() string {
+// 	driver := "kvm"
 
-	if runtime.GOOS == "darwin" {
-		driver = "hvf"
-	}
+// 	if runtime.GOOS == "darwin" {
+// 		driver = "hvf"
+// 	}
 
-	return driver
-}
+// 	return driver
+// }
 
 func (h *Qemu) getPID(vm *Machine) string {
 	data, _ := os.ReadFile(fmt.Sprintf(path.GetPath(path.PIDFile), vm.Name))

@@ -29,7 +29,6 @@ type Templater interface {
 // LocalTemplate represents a local file-based template
 type LocalTemplate struct {
 	path string // path is the file system path to the local template
-	name string // name is the name of the local template
 }
 
 // RemoteTemplate represents a template that needs to be fetched from a remote source
@@ -138,7 +137,6 @@ func parseTemplate(tpl []byte) (*Instance, error) {
 		machine.Hypervisor = getHypervisor()
 
 		instance.Machines = append(instance.Machines, *machine)
-		break
 	case "Cluster":
 		// Unmarshal the Cluster
 		c := &Cluster{}
@@ -184,7 +182,6 @@ func parseTemplate(tpl []byte) (*Instance, error) {
 
 		}
 		instance.Machines = append(instance.Machines, expandedMachines...)
-		break
 	default:
 		return nil, errors.New("unsupported kind")
 	}
@@ -252,7 +249,7 @@ func GetTemplateList() []string {
 		Type string `json:"type"`
 	}
 
-	url := fmt.Sprintf("https://api.github.com/repos/enkodr/machina/contents/templates")
+	url := "https://api.github.com/repos/enkodr/machina/contents/templates"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
