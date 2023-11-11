@@ -57,24 +57,16 @@ func (h *Qemu) Start(vm *Machine) error {
 }
 
 func (h *Qemu) Stop(vm *Machine) error {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		return err
-	}
 	command := "ssh"
 	args := []string{
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, path.GetPath(path.PrivateKeyFile)),
+		"-i", fmt.Sprintf(path.GetPath(path.PrivateKeyFile), vm.Name),
 		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
 		"sudo", "shutdown", "now",
 	}
-	cmd := exec.Command(command, args...)
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
 
-	return nil
+	cmd := exec.Command(command, args...)
+	return cmd.Run()
 }
 
 func (h *Qemu) ForceStop(vm *Machine) error {
@@ -84,20 +76,11 @@ func (h *Qemu) ForceStop(vm *Machine) error {
 		h.getPID(vm),
 	}
 	cmd := exec.Command(command, args...)
-	err := cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return cmd.Run()
 }
 
 func (h *Qemu) Status(vm *Machine) (string, error) {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		return "", err
-	}
-	if _, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name, path.GetPath(path.PIDFile))); os.IsNotExist(err) {
+	if _, err := os.Stat(fmt.Sprintf(path.GetPath(path.PIDFile), vm.Name)); os.IsNotExist(err) {
 		return "shut off", nil
 	}
 	return "running", nil
@@ -140,10 +123,6 @@ func getHypervisorDriver() string {
 }
 
 func (h *Qemu) getPID(vm *Machine) string {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		return "err"
-	}
-	data, _ := os.ReadFile(filepath.Join(cfg.Directories.Instances, vm.Name, path.GetPath(path.PIDFile)))
+	data, _ := os.ReadFile(fmt.Sprintf(path.GetPath(path.PIDFile), vm.Name))
 	return string(data)
 }
