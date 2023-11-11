@@ -1,45 +1,12 @@
 package config
 
 import (
-	"os"
-	"path/filepath"
+	"encoding/json"
 	"runtime"
 
-	"gopkg.in/yaml.v3"
+	"github.com/enkodr/machina/internal/db"
+	"github.com/enkodr/machina/internal/path"
 )
-
-type Filename int
-
-const (
-	NetworkFilename Filename = iota
-	UserdataFilename
-	PrivateKeyFilename
-	InstanceFilename
-	SeedImageFilename
-	DiskFilename
-	PIDFilename
-)
-
-func GetFilename(fn Filename) string {
-	switch fn {
-	case NetworkFilename:
-		return "network.cfg"
-	case UserdataFilename:
-		return "userdata.yaml"
-	case PrivateKeyFilename:
-		return "id_rsa"
-	case InstanceFilename:
-		return "instance.yaml"
-	case SeedImageFilename:
-		return "seed.img"
-	case DiskFilename:
-		return "disk.img"
-	case PIDFilename:
-		return "vm.pid"
-	}
-
-	return ""
-}
 
 type Config struct {
 	Hypervisor  string      `yaml:"hypervisor,omitempty"`
@@ -53,57 +20,42 @@ type Directories struct {
 	Results   string `yaml:"results,omitempty"`
 }
 
-var (
-	baseDir = ".local/share/machina"
-	cfgDir  = ".config/machina"
-)
-
 // LoadConfig loads the configuration from the config file
 func LoadConfig() (*Config, error) {
-	cfgFile := getConfigFilePath()
-
 	// If the config file exists, load it
-	if configExists(cfgFile) {
-		return loadConfigFromFile(cfgFile)
-	}
-
-	// Create config directory
-	createConfigDir()
-
-	// Otherwise, create a default config file
-	return createDefaultConfig(cfgFile)
-}
-
-// getConfigFilePath returns the path to the config file
-func getConfigFilePath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, cfgDir, "config.yaml")
-}
-
-// Create config directory
-func createConfigDir() error {
-	home, _ := os.UserHomeDir()
-	dir := filepath.Join(home, cfgDir)
-	return os.MkdirAll(dir, 0755)
-}
-
-// configExists checks if the config file exists
-func configExists(cfgFile string) bool {
-	_, err := os.Stat(cfgFile)
-	return err == nil
-}
-
-// loadConfigFromFile loads the configuration from the config file
-func loadConfigFromFile(cfgFile string) (*Config, error) {
-	// Read the config file
-	cfgBytes, err := os.ReadFile(cfgFile)
+	cfg, err := loadConfigFromDB()
 	if err != nil {
 		return nil, err
 	}
 
+	if cfg == nil {
+		return createDefaultConfig()
+	}
+
+	return cfg, nil
+}
+
+// loadConfig loads the configuration from the config file
+func loadConfigFromDB() (*Config, error) {
+	// Initialise db
+	db, err := db.NewDB("config")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	data, err := db.Get("config")
+	if err != nil {
+		return nil, err
+	}
+
+	if data == nil {
+		return nil, nil
+	}
+
 	// Unmarshal the config file
 	var cfg Config
-	err = yaml.Unmarshal(cfgBytes, &cfg)
+	err = json.Unmarshal(data, &cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -112,48 +64,33 @@ func loadConfigFromFile(cfgFile string) (*Config, error) {
 }
 
 // createDefaultConfig creates a default config file
-func createDefaultConfig(cfgFile string) (*Config, error) {
+func createDefaultConfig() (*Config, error) {
+
 	cfg := Config{
 		Hypervisor: getHypervisor(),
 		Connection: getConnection(),
 		Directories: Directories{
-			Images:    getDefaultImagePath(),
-			Instances: getDefaultInstancesPath(),
-			Results:   getDefaultResultsPath(),
+			Images:    path.GetPath(path.ImagesDir),
+			Instances: path.GetPath(path.InstanceFile),
+			Results:   path.GetPath(path.ResultsDir),
 		},
 	}
 
+	db, err := db.NewDB("config")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
 	// Create the config file
-	yamlData, err := yaml.Marshal(cfg)
+	data, err := json.Marshal(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	// Write the config file
-	err = os.WriteFile(cfgFile, yamlData, 0644)
-	if err != nil {
-		return nil, err
-	}
+	db.Put("config", []byte(data))
 
 	return &cfg, nil
-}
-
-// GetDefaultImagePath returns the default path for images
-func getDefaultImagePath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, baseDir, "images")
-}
-
-// GetDefaultInstancesPath returns the default path for instances
-func getDefaultInstancesPath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, baseDir, "instances")
-}
-
-// getDefaultResultsPath returns the default path for results
-func getDefaultResultsPath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, baseDir, "results")
 }
 
 // GetHypervisor returns the hypervisor to be used

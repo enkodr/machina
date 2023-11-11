@@ -12,6 +12,7 @@ import (
 
 	"github.com/enkodr/machina/internal/config"
 	"github.com/enkodr/machina/internal/osutil"
+	"github.com/enkodr/machina/internal/path"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -66,22 +67,22 @@ func TestMachine_Prepare(t *testing.T) {
 	assert.NoError(t, err, "Error preparing machine")
 
 	// Verify network configuration file
-	networkPath := filepath.Join(tempDir, machine.Name, config.GetFilename(config.NetworkFilename))
+	networkPath := filepath.Join(tempDir, machine.Name, path.GetPath(path.NetworkFile))
 	_, err = os.Stat(networkPath)
 	assert.NoError(t, err, "Network configuration file not found")
 
 	// Verify user data file
-	userdataPath := filepath.Join(tempDir, machine.Name, config.GetFilename(config.UserdataFilename))
+	userdataPath := filepath.Join(tempDir, machine.Name, path.GetPath(path.UserdataFile))
 	_, err = os.Stat(userdataPath)
 	assert.NoError(t, err, "User data file not found")
 
 	// Verify private key file
-	privateKeyPath := filepath.Join(tempDir, machine.Name, config.GetFilename(config.PrivateKeyFilename))
+	privateKeyPath := filepath.Join(tempDir, machine.Name, path.GetPath(path.PrivateKeyFile))
 	_, err = os.Stat(privateKeyPath)
 	assert.NoError(t, err, "Private key file not found")
 
 	// Verify machine file
-	machinePath := filepath.Join(tempDir, machine.Name, config.GetFilename(config.InstanceFilename))
+	machinePath := filepath.Join(tempDir, machine.Name, path.GetPath(path.InstanceFile))
 	_, err = os.Stat(machinePath)
 	assert.NoError(t, err, "Machine file not found")
 }

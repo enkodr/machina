@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/enkodr/machina/internal/config"
 	"github.com/enkodr/machina/internal/imgutil"
 	"github.com/enkodr/machina/internal/netutil"
 	"github.com/enkodr/machina/internal/osutil"
+	"github.com/enkodr/machina/internal/path"
 	"github.com/enkodr/machina/internal/sshutil"
 	"github.com/enkodr/machina/internal/usrutil"
 	"gopkg.in/yaml.v3"
@@ -102,7 +102,7 @@ func (machine *Machine) Prepare() error {
 	}
 
 	// Save network configuration
-	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.NetworkFilename)), netYaml, 0644)
+	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.NetworkFile)), netYaml, 0644)
 	if err != nil {
 		return err
 	}
@@ -142,13 +142,13 @@ func (machine *Machine) Prepare() error {
 	}
 
 	usrYaml = append([]byte("#cloud-config\n"), usrYaml...)
-	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.UserdataFilename)), usrYaml, 0644)
+	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.UserdataFile)), usrYaml, 0644)
 	if err != nil {
 		return err
 	}
 
 	// Save private key
-	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename)), clCfg.PrivateKey, 0600)
+	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.PrivateKeyFile)), clCfg.PrivateKey, 0600)
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func (machine *Machine) Prepare() error {
 		return err
 	}
 
-	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.InstanceFilename)), vmYaml, 0644)
+	err = os.WriteFile(filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.InstanceFile)), vmYaml, 0644)
 	if err != nil {
 		return err
 	}
@@ -226,7 +226,7 @@ func (machine *Machine) createInstanceDisk() error {
 		"create",
 		"-F", "qcow2",
 		"-b", filepath.Join(cfg.Directories.Images, image),
-		"-f", "qcow2", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.DiskFilename)),
+		"-f", "qcow2", filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.DiskFile)),
 		machine.Resources.Disk,
 	}
 
@@ -245,9 +245,9 @@ func (machine *Machine) createSeedDisk() error {
 
 	// Set the arguments
 	args := []string{
-		fmt.Sprintf("--network-config=%s", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.NetworkFilename))),
-		filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.SeedImageFilename)),
-		filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.UserdataFilename)),
+		fmt.Sprintf("--network-config=%s", filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.NetworkFile))),
+		filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.SeedImageFile)),
+		filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.UserdataFile)),
 	}
 
 	// Run the command to create the disk
@@ -324,7 +324,7 @@ func (machine *Machine) CopyContent(origin string, dest string) error {
 	args := []string{
 		"-r",
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.PrivateKeyFile)),
 		origin,
 		dest,
 	}
@@ -344,7 +344,7 @@ func (machine *Machine) RunInitScripts() error {
 	command := "scp"
 	args := []string{
 		"-o", "StrictHostKeyChecking=no",
-		"-i", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.PrivateKeyFile)),
 		"-r",
 		filepath.Join(machine.baseDir, machine.Name, "bin/"),
 		fmt.Sprintf("%s@%s:/tmp/machina", machine.Credentials.Username, machine.Network.IPAddress),
@@ -360,7 +360,7 @@ func (machine *Machine) RunInitScripts() error {
 	command = "ssh"
 	args = []string{
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.PrivateKeyFile)),
 		fmt.Sprintf("%s@%s", machine.Credentials.Username, machine.Network.IPAddress),
 		"/tmp/machina/prepare.sh",
 	}
@@ -390,7 +390,7 @@ func (machine *Machine) RunInitScripts() error {
 	args = []string{
 		"-ru",
 		"-e",
-		fmt.Sprintf("ssh -i %s", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename))),
+		fmt.Sprintf("ssh -i %s", filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.PrivateKeyFile))),
 		filepath.Join(cfg.Directories.Results, machine.clusterName),
 		fmt.Sprintf("%s@%s:/etc/machina/results", machine.Credentials.Username, machine.Network.IPAddress),
 	}
@@ -405,7 +405,7 @@ func (machine *Machine) RunInitScripts() error {
 	command = "ssh"
 	args = []string{
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.PrivateKeyFile)),
 		fmt.Sprintf("%s@%s", machine.Credentials.Username, machine.Network.IPAddress),
 		"/etc/machina/install.sh",
 	}
@@ -421,7 +421,7 @@ func (machine *Machine) RunInitScripts() error {
 	args = []string{
 		"-ru",
 		"-e",
-		fmt.Sprintf("ssh -i %s", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename))),
+		fmt.Sprintf("ssh -i %s", filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.PrivateKeyFile))),
 		fmt.Sprintf("%s@%s:/etc/machina/results/%s", machine.Credentials.Username, machine.Network.IPAddress, machine.clusterName),
 		cfg.Directories.Results,
 	}
@@ -440,7 +440,7 @@ func (machine *Machine) Shell() error {
 	// Copies the init script into the VM
 	command := "ssh"
 	args := []string{
-		"-i", filepath.Join(machine.baseDir, machine.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(machine.baseDir, machine.Name, path.GetPath(path.PrivateKeyFile)),
 		fmt.Sprintf("%s@%s", machine.Credentials.Username, machine.Network.IPAddress),
 	}
 

@@ -7,12 +7,12 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/enkodr/machina/internal/config"
 	"github.com/enkodr/machina/internal/netutil"
 	"github.com/enkodr/machina/internal/osutil"
+	"github.com/enkodr/machina/internal/path"
 	"github.com/imdario/mergo"
 	"gopkg.in/yaml.v3"
 )
@@ -203,7 +203,7 @@ func GetMachine(name string) (*Machine, error) {
 	}
 
 	// Reads the YAML file
-	data, err := os.ReadFile(filepath.Join(cfg.Directories.Instances, name, config.GetFilename(config.InstanceFilename)))
+	data, err := os.ReadFile(fmt.Sprintf(path.GetPath(path.InstanceFile), name))
 	if err != nil {
 		return nil, err
 	}

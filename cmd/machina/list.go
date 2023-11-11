@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/alexeyco/simpletable"
-	"github.com/enkodr/machina/internal/config"
 	"github.com/enkodr/machina/internal/hypvsr"
+	"github.com/enkodr/machina/internal/path"
 	"github.com/spf13/cobra"
 )
 
@@ -22,14 +22,14 @@ var listCommand = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Load the application configuration
-		cfg, err := config.LoadConfig()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error loading configuration")
-		}
+		// cfg, err := config.LoadConfig()
+		// if err != nil {
+		// 	fmt.Fprintf(os.Stderr, "error loading configuration")
+		// }
 
 		var instances []fs.DirEntry
 		// Get's a list of all the instances created
-		dirs, _ := os.ReadDir(cfg.Directories.Instances)
+		dirs, _ := os.ReadDir(path.GetPath(path.InstancesDir))
 		instances = append(instances, dirs...)
 
 		// Create a new visual table and set the header titles

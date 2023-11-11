@@ -8,6 +8,7 @@ import (
 	"runtime"
 
 	"github.com/enkodr/machina/internal/config"
+	"github.com/enkodr/machina/internal/path"
 )
 
 type Qemu struct{}
@@ -63,7 +64,7 @@ func (h *Qemu) Stop(vm *Machine) error {
 	command := "ssh"
 	args := []string{
 		"-o StrictHostKeyChecking=no",
-		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(config.PrivateKeyFilename)),
+		"-i", filepath.Join(cfg.Directories.Instances, vm.Name, path.GetPath(path.PrivateKeyFile)),
 		fmt.Sprintf("%s@%s", vm.Credentials.Username, vm.Network.IPAddress),
 		"sudo", "shutdown", "now",
 	}
@@ -96,7 +97,7 @@ func (h *Qemu) Status(vm *Machine) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(config.PIDFilename))); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cfg.Directories.Instances, vm.Name, path.GetPath(path.PIDFile))); os.IsNotExist(err) {
 		return "shut off", nil
 	}
 	return "running", nil
@@ -143,6 +144,6 @@ func (h *Qemu) getPID(vm *Machine) string {
 	if err != nil {
 		return "err"
 	}
-	data, _ := os.ReadFile(filepath.Join(cfg.Directories.Instances, vm.Name, config.GetFilename(config.PIDFilename)))
+	data, _ := os.ReadFile(filepath.Join(cfg.Directories.Instances, vm.Name, path.GetPath(path.PIDFile)))
 	return string(data)
 }

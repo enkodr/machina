@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/enkodr/machina/internal/config"
+	"github.com/enkodr/machina/internal/path"
 )
 
 // Hypervisor is an interface for interacting with the hypervisor
@@ -48,8 +49,8 @@ func (h *Libvirt) Create(machine *Machine) error {
 		"--ram", ram,
 		fmt.Sprintf("--vcpus=%s", machine.Resources.CPUs),
 		"--os-variant", machine.Variant,
-		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.DiskFilename))),
-		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, machine.Name, config.GetFilename(config.SeedImageFilename))),
+		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, machine.Name, path.GetPath(path.DiskFile))),
+		"--disk", fmt.Sprintf("path=%s,device=disk", filepath.Join(cfg.Directories.Instances, machine.Name, path.GetPath(path.SeedImageFile))),
 		"--import",
 		"--network", fmt.Sprintf("bridge=virbr0,model=virtio,mac=%s", machine.Network.MacAddress),
 		"--noautoconsole",
