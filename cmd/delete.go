@@ -1,4 +1,4 @@
-package machina
+package cmd
 
 import (
 	"bufio"

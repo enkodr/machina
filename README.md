@@ -6,8 +6,14 @@ The application supports VM creation using either `libvirt` or `qemu`.
 
 ## Installation
 
+### Install using installation script
 ```bash
 curl -sL https://raw.githubusercontent.com/enkodr/machina/main/bin/install | sh -
+```
+
+### Install using go package manager
+```bash
+go install github.com/enkodr/machina@latest
 ```
 
 ## How to Use
