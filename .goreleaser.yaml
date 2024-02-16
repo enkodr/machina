@@ -2,7 +2,7 @@ before:
   hooks:
     - go mod tidy
 builds:
-  - main: ./cmd/main.go
+  - main: ./main.go
     binary: machina
     id: machina
     env:
@@ -13,9 +13,9 @@ builds:
     ldflags:
     - -s
     - -w
-    - -X github.com/enkodr/machina/cmd/machina.version={{.Version}}
-    - -X github.com/enkodr/machina/cmd/machina.gitCommit={{.Commit}}
-    - -X github.com/enkodr/machina/cmd/machina.buildDate={{.Date}}
+    - -X github.com/enkodr/machina/machina.version={{.Version}}
+    - -X github.com/enkodr/machina/machina.gitCommit={{.Commit}}
+    - -X github.com/enkodr/machina/machina.buildDate={{.Date}}
     goos:
       - linux
 archives:
