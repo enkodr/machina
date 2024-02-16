@@ -1,6 +1,6 @@
 package main
 
-import "github.com/enkodr/machina/cmd/machina"
+import "github.com/enkodr/machina/cmd"
 
 var (
 	version = "dev"
@@ -9,5 +9,5 @@ var (
 )
 
 func main() {
-	machina.Execute()
+	cmd.Execute()
 }
