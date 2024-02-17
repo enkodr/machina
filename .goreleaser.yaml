@@ -13,9 +13,9 @@ builds:
     ldflags:
     - -s
     - -w
-    - -X github.com/enkodr/machina/machina.version={{.Version}}
-    - -X github.com/enkodr/machina/machina.gitCommit={{.Commit}}
-    - -X github.com/enkodr/machina/machina.buildDate={{.Date}}
+    - -X github.com/enkodr/machina/cmd.version={{.Version}}
+    - -X github.com/enkodr/machina/cmd.gitCommit={{.Commit}}
+    - -X github.com/enkodr/machina/cmd.buildDate={{.Date}}
     goos:
       - linux
 archives:
