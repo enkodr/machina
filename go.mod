@@ -1,6 +1,6 @@
 module github.com/enkodr/machina
 
-go 1.22
+go 1.21
 
 require (
 	github.com/alexeyco/simpletable v1.0.0
