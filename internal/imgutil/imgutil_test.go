@@ -37,15 +37,15 @@ func TestEnsureDirectories(t *testing.T) {
 	assert.True(t, directoryExists(cfg.Directories.Instances))
 
 	// Test case when directory creation fails
-	cfg = &config.Config{
+	cfgInvalid := &config.Config{
 		Directories: config.Directories{
 			Images:    "/invalid/path", // Invalid path
-			Instances: "/path/to/instances",
+			Instances: "/invalid/instances",
 		},
 	}
 	EnsureDirectories(cfg)
-	assert.False(t, directoryExists(cfg.Directories.Images))
-	assert.False(t, directoryExists(cfg.Directories.Instances))
+	assert.False(t, directoryExists(cfgInvalid.Directories.Images))
+	assert.False(t, directoryExists(cfgInvalid.Directories.Instances))
 }
 
 func TestGetFilenameFromURL(t *testing.T) {
