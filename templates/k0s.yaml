@@ -1,0 +1,22 @@
+# The kind Machine is the type to create isolated virtual machines
+kind: Machine
+
+name: k0s
+
+extends: ubuntu
+
+scripts:
+  install: |
+    #!/bin/bash
+    sudo apt update
+    sudo apt upgrade -y
+    curl -sSLf https://get.k0s.sh | sudo sh
+    sudo k0s install controller --single
+    sudo k0s start
+    sudo snap install kubectl --classic
+    mkdir -p $HOME/.kube
+    sudo cp /var/lib/k0s/pki/admin.conf $HOME/.kube/config
+    sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+  init: |
+    #!/bin/bash
