@@ -13,7 +13,7 @@ variant: "debian11"
 # The image to be used to provision the machine
 image : 
   url: "https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-generic-amd64.qcow2"
-  checksum: "sha512:5426d0398d3ec685a74256114158daebfd7064b95301c6e2724b1b35e4a83b57809269096b44278b4c3ad4da851d5d606ab740d50c928a2a6c7707aa51d8b61a"
+  checksum: "sha512:7d2e7da36a3761ece48e604490365e4cb422da1ebf18414e57363960d3ebde1cb2616806b2f7de33ee449dcba4bb86da5d9f104dff3c18f2a49c42ea69a80799"
 
 # The user credentials to be set for the default user.
 # This user will have root access without asking for password.
