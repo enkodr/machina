@@ -13,7 +13,7 @@ variant: "ubuntu22.04"
 # The image to be used to provision the machine
 image : 
   url: "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
-  checksum: "sha256:56d8be5961d4cafe818125f07cd5e85a206955b9144a08b06ae3ca562d12b873"
+  checksum: "sha256:82384f6c58edd084652f72df645ac4e90b2b779cbd3534b521c119808e841067"
   
 # The user credentials to be set for the default user.
 # This user will have root access without asking for password.
