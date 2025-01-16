@@ -26,7 +26,7 @@ machines:
 
   image: 
     url: "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img"
-    checksum: "sha256:e64e0d3a8b4629637a9655a320079f58ca4b1f41b2ef8020dc54b79a4b52c845"
+    checksum: "sha256:57cdf74886cffbffbcaa64e5eaeca85cb328696315e1301b686fcea3e85b0728"
 
   scripts:
     install: |
@@ -85,7 +85,7 @@ machines:
 
   image: 
     url: "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img"
-    checksum: "sha256:e64e0d3a8b4629637a9655a320079f58ca4b1f41b2ef8020dc54b79a4b52c845"
+    checksum: "sha256:57cdf74886cffbffbcaa64e5eaeca85cb328696315e1301b686fcea3e85b0728"
 
   scripts:
     install: |
