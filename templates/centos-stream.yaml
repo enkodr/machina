@@ -13,7 +13,7 @@ variant: "centos-stream9"
 # The image to be used to provision the machine
 image : 
   url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
-  checksum: "sha256sum:543deabc928590e5e34c5dd05f9664f7b8c91e559a7b5eae50e16e3bce3bbdeb"
+  checksum: "sha256sum:9c7cbce3c1fdd1e06e4fea8d577ec014f18eb700e48629b04a84ce1589890135"
   
 # The user credentials to be set for the default user.
 # This user will have root access without asking for password.
